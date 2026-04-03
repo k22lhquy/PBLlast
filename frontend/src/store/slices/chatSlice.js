@@ -40,7 +40,7 @@ export const fetchConversationFiles = createAsyncThunk('chat/fetchFiles', async 
 
 const initialState = {
   conversations: [],
-  activeConversationId: null,
+  activeConversationId: localStorage.getItem('activeConversationId') || null,
   messages: [],
   files: [],
   isLoadingFiles: false,
@@ -54,6 +54,11 @@ const chatSlice = createSlice({
   reducers: {
     setActiveConversationId: (state, action) => {
       state.activeConversationId = action.payload;
+      if (action.payload) {
+          localStorage.setItem('activeConversationId', action.payload);
+      } else {
+          localStorage.removeItem('activeConversationId');
+      }
       state.messages = []; // Clear current messages on switch
       state.files = []; // Clear current files
     },
@@ -69,18 +74,26 @@ const chatSlice = createSlice({
       // Fetch All Conversations
       .addCase(fetchAllConversations.fulfilled, (state, action) => {
           state.conversations = action.payload;
-          if(!state.activeConversationId && state.conversations.length > 0) {
+          const exists = state.conversations.find(c => c.id === state.activeConversationId);
+          
+          if(!exists && state.conversations.length > 0) {
               state.activeConversationId = state.conversations[state.conversations.length - 1].id;
+              localStorage.setItem('activeConversationId', state.activeConversationId);
+          } else if (!exists) {
+              state.activeConversationId = null;
+              localStorage.removeItem('activeConversationId');
           }
       })
       // Create new Chat
       .addCase(createNewConversation.fulfilled, (state, action) => {
           state.conversations.push(action.payload);
           state.activeConversationId = action.payload.id;
+          localStorage.setItem('activeConversationId', action.payload.id);
           state.messages = [];
       })
       // Fetch messages
       .addCase(fetchMessages.fulfilled, (state, action) => {
+          if (action.payload.length === 0 && state.messages.length > 0) return;
           state.messages = action.payload;
       })
       // Fetch files
