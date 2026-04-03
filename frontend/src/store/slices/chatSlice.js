@@ -1,0 +1,94 @@
+import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { chatApi } from '../../api/chatApi';
+
+// Thunks
+export const fetchAllConversations = createAsyncThunk('chat/fetchAll', async (_, { rejectWithValue }) => {
+    try {
+        const response = await chatApi.getAllConversations();
+        return response.data;
+    } catch(err) {
+        return rejectWithValue(err.message || 'Cannot fetch conversations');
+    }
+});
+
+export const createNewConversation = createAsyncThunk('chat/create', async (_, { rejectWithValue }) => {
+    try {
+        const response = await chatApi.newChat();
+        return response.data;
+    } catch(err) {
+        return rejectWithValue(err.message || 'Cannot create conversation');
+    }
+});
+
+export const fetchMessages = createAsyncThunk('chat/fetchMessages', async (id, { rejectWithValue }) => {
+    try {
+        const response = await chatApi.getMessages(id);
+        return response.data;
+    } catch(err) {
+        return rejectWithValue(err.message || 'Cannot fetch messages');
+    }
+});
+
+export const fetchConversationFiles = createAsyncThunk('chat/fetchFiles', async (id, { rejectWithValue }) => {
+    try {
+        const response = await chatApi.getFiles(id);
+        return response.data;
+    } catch(err) {
+        return rejectWithValue(err.message || 'Cannot fetch files');
+    }
+});
+
+const initialState = {
+  conversations: [],
+  activeConversationId: null,
+  messages: [],
+  files: [],
+  isLoadingFiles: false,
+  isSendingMessage: false,
+  error: null,
+};
+
+const chatSlice = createSlice({
+  name: 'chat',
+  initialState,
+  reducers: {
+    setActiveConversationId: (state, action) => {
+      state.activeConversationId = action.payload;
+      state.messages = []; // Clear current messages on switch
+      state.files = []; // Clear current files
+    },
+    addMessageLocally: (state, action) => {
+      state.messages.push(action.payload);
+    },
+    setSendingMessage: (state, action) => {
+        state.isSendingMessage = action.payload;
+    }
+  },
+  extraReducers: (builder) => {
+      builder
+      // Fetch All Conversations
+      .addCase(fetchAllConversations.fulfilled, (state, action) => {
+          state.conversations = action.payload;
+          if(!state.activeConversationId && state.conversations.length > 0) {
+              state.activeConversationId = state.conversations[state.conversations.length - 1].id;
+          }
+      })
+      // Create new Chat
+      .addCase(createNewConversation.fulfilled, (state, action) => {
+          state.conversations.push(action.payload);
+          state.activeConversationId = action.payload.id;
+          state.messages = [];
+      })
+      // Fetch messages
+      .addCase(fetchMessages.fulfilled, (state, action) => {
+          state.messages = action.payload;
+      })
+      // Fetch files
+      .addCase(fetchConversationFiles.fulfilled, (state, action) => {
+          state.files = action.payload;
+      });
+  }
+});
+
+export const { setActiveConversationId, addMessageLocally, setSendingMessage } = chatSlice.actions;
+export default chatSlice.reducer;
