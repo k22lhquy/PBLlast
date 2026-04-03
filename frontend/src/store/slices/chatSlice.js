@@ -67,6 +67,11 @@ const chatSlice = createSlice({
     },
     setSendingMessage: (state, action) => {
         state.isSendingMessage = action.payload;
+    },
+    updateConversationTitleLocally: (state, action) => {
+        const { id, title } = action.payload;
+        const conv = state.conversations.find(c => c.id === id);
+        if (conv) conv.title = title;
     }
   },
   extraReducers: (builder) => {
@@ -103,5 +108,5 @@ const chatSlice = createSlice({
   }
 });
 
-export const { setActiveConversationId, addMessageLocally, setSendingMessage } = chatSlice.actions;
+export const { setActiveConversationId, addMessageLocally, setSendingMessage, updateConversationTitleLocally } = chatSlice.actions;
 export default chatSlice.reducer;

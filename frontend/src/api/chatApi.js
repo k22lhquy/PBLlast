@@ -14,6 +14,7 @@ export const chatApi = {
   },
   deleteFile: (fileId) => axiosClient.delete(`/chat-box/delete-file/${fileId}`),
   getFiles: (conversationId) => axiosClient.get(`/chat-box/files/${conversationId}`),
+  renameConversation: (conversationId, title) => axiosClient.put(`/chat-box/rename/${conversationId}`, { title }),
   getMessages: (conversationId) => axiosClient.get(`/messages/all_messages/${conversationId}`),
   sendMessage: (conversationId, message) => axiosClient.post('/messages/send_message', {
       conversationId: conversationId,
