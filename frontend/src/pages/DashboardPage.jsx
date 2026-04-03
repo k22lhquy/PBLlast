@@ -3,8 +3,70 @@ import { useDispatch, useSelector } from 'react-redux';
 import { fetchAllConversations, createNewConversation, fetchMessages, setActiveConversationId, addMessageLocally, setSendingMessage, fetchConversationFiles, updateConversationTitleLocally } from '../store/slices/chatSlice';
 import { logout } from '../store/slices/authSlice';
 import { chatApi } from '../api/chatApi';
-import { MessageSquare, Plus, LogOut, Send, Paperclip, Loader2, Bot, User, Trash2, FileText, Edit2 } from 'lucide-react';
+import { MessageSquare, Plus, LogOut, Send, Paperclip, Loader2, Bot, User, Trash2, FileText, Edit2, Info, X } from 'lucide-react';
 import { toast } from 'react-toastify';
+
+const HighlightedChunk = ({ chunkText, answerText }) => {
+    if (!chunkText) return null;
+    if (!answerText) return <p className="text-zinc-300">{chunkText}</p>;
+
+    const stopWords = new Set([
+        "trong", "người", "những", "nhiều", "được", "không", "cùng", "rằng", "thực", "hiện", 
+        "trên", "dưới", "ngoài", "bằng", "theo", "đang", "từng", "cũng", "định", "phải", 
+        "nhưng", "khác", "nào", "mới", "với", "cho", "của", "các", "một", "như", "này", 
+        "đó", "nọ", "kia", "đây", "rất", "quá", "lắm", "hơn", "nhất", "làm", "sao", "thế",
+        "thì", "mà", "là", "nếu", "có", "tại", "sẽ", "đã", "vẫn", "chưa", "về", "ra", "vào"
+    ]);
+
+    const getKeywords = (text) => {
+        return text.toLowerCase()
+                   .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+                   .split(/\s+/)
+                   .filter(w => w.length >= 2 && !stopWords.has(w));
+    };
+
+    const answerWords = new Set(getKeywords(answerText));
+    const paragraphs = chunkText.split(/\n+/);
+    
+    let maxScore = 0;
+    const scoredParagraphs = paragraphs.map(para => {
+        if (!para.trim()) return { text: para, sentences: [] };
+        const sentences = para.match(/[^.!?\n]+[.!?\n]*\s*/g) || [para];
+        const scoredSentences = sentences.map(s => {
+            const sWords = getKeywords(s);
+            let count = 0;
+            sWords.forEach(w => { if(answerWords.has(w)) count++; });
+            if (count > maxScore) maxScore = count;
+            return { text: s, score: count };
+        });
+        return { text: para, sentences: scoredSentences };
+    });
+
+    const threshold = Math.max(3, maxScore * 0.5); // Must have at least 3 keyword overlaps to prevent random highlights
+    const globalHasHighlight = maxScore >= 3;
+
+    return (
+        <>
+            {scoredParagraphs.map((para, pIdx) => {
+                if (para.sentences.length === 0) return null;
+                return (
+                    <p key={pIdx} className="mb-3 last:mb-0 text-zinc-300">
+                        {para.sentences.map((s, sIdx) => {
+                            if (!globalHasHighlight) {
+                                return <span key={sIdx}>{s.text}</span>;
+                            }
+                            if (s.score >= threshold) {
+                                return <span key={sIdx} className="bg-emerald-500/20 text-emerald-100 rounded px-1 -mx-0.5 font-medium transition-all">{s.text}</span>;
+                            } else {
+                                return <span key={sIdx} className="text-zinc-600">{s.text}</span>;
+                            }
+                        })}
+                    </p>
+                );
+            })}
+        </>
+    );
+};
 
 const DashboardPage = () => {
     const dispatch = useDispatch();
@@ -15,6 +77,7 @@ const DashboardPage = () => {
     const [isUploading, setIsUploading] = useState(false);
     const [editingChatId, setEditingChatId] = useState(null);
     const [editingTitle, setEditingTitle] = useState("");
+    const [selectedSource, setSelectedSource] = useState(null);
     const messagesEndRef = useRef(null);
 
     // Initial load
@@ -143,7 +206,8 @@ const DashboardPage = () => {
             const isFirstMessage = messages.length === 0;
             const res = await chatApi.sendMessage(targetConversationId, userMsg);
             const answer = res.data.answer || "";
-            dispatch(addMessageLocally({ role: "assistant", content: answer })); 
+            const sources = res.data.sources || [];
+            dispatch(addMessageLocally({ role: "assistant", content: answer, sources: sources })); 
 
             // Auto-rename logic for the first message
             if (isFirstMessage && answer) {
@@ -288,6 +352,22 @@ const DashboardPage = () => {
                                         </div>
                                         <div className={`p-4 rounded-2xl max-w-[80%] shadow-sm ${isUser ? 'bg-emerald-600 text-white rounded-tr-sm' : 'bg-zinc-900 border border-zinc-800 text-zinc-200 rounded-tl-sm'}`}>
                                             <p className="whitespace-pre-wrap text-sm leading-relaxed">{msg.content}</p>
+                                            
+                                            {/* RAG Citations Rendering */}
+                                            {msg.sources && msg.sources.length > 0 && (
+                                                <div className="mt-4 pt-3 border-t border-zinc-800/50 flex flex-wrap gap-2">
+                                                    {msg.sources.map((src, i) => (
+                                                        <button 
+                                                            key={i} 
+                                                            onClick={() => setSelectedSource({ ...src, index: i + 1, answer: msg.content })}
+                                                            className="text-xs bg-zinc-950 border border-zinc-800 text-zinc-400 px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 hover:bg-zinc-800 hover:text-emerald-400 hover:border-emerald-500/30 transition-all font-medium"
+                                                        >
+                                                            <Info size={12} />
+                                                            [{i + 1}] {src.file_name}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 );
@@ -425,6 +505,36 @@ const DashboardPage = () => {
                     </div>
                 </div>
             )}
+
+            {/* Citation Context Modal */}
+            {selectedSource && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-opacity" onClick={() => setSelectedSource(null)}>
+                    <div className="bg-zinc-900 border border-zinc-700 rounded-2xl w-full max-w-3xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+                        <div className="px-6 py-4 border-b border-zinc-800 flex justify-between items-center bg-zinc-900/90 backdrop-blur">
+                            <div>
+                                <h3 className="text-lg font-semibold text-emerald-400 flex items-center gap-2">
+                                    <FileText size={18} />
+                                    {selectedSource.file_name}
+                                </h3>
+                                <p className="text-xs text-zinc-500 mt-1">Source context extracted via Semantic Search [{selectedSource.index}]</p>
+                            </div>
+                            <button onClick={() => setSelectedSource(null)} className="text-zinc-400 hover:text-white p-2 rounded-full hover:bg-zinc-800 transition-colors">
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <div className="p-6 overflow-y-auto bg-zinc-950/80 custom-scrollbar text-sm leading-relaxed font-mono">
+                            <div className="p-5 border-l-4 border-emerald-500 bg-emerald-500/5 text-emerald-100 rounded-r-xl">
+                                <HighlightedChunk chunkText={selectedSource.content} answerText={selectedSource.answer} />
+                            </div>
+                        </div>
+                        <div className="px-6 py-3 border-t border-zinc-800 bg-zinc-900 flex justify-between items-center">
+                            <span className="text-xs text-zinc-500 flex items-center gap-1"><Info size={12}/> Exact document snippet retrieved by Reranking model</span>
+                            <button onClick={() => setSelectedSource(null)} className="text-xs font-semibold px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg transition-colors">Close Viewer</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
         </div>
     );
 };
