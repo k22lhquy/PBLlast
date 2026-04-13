@@ -8,6 +8,20 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
 
+const ThemeProvider = ({ children }) => {
+  const { isDark } = useSelector((state) => state.theme);
+
+  useEffect(() => {
+    if (isDark) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [isDark]);
+
+  return children;
+};
+
 // Simple Route Guard
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, isLoading, token } = useSelector((state) => state.auth);
@@ -36,6 +50,7 @@ const PublicRoute = ({ children }) => {
 function App() {
   const dispatch = useDispatch();
   const { token, isAuthenticated } = useSelector((state) => state.auth);
+  const { isDark } = useSelector((state) => state.theme);
 
   // Initialize Me State
   useEffect(() => {
@@ -45,8 +60,8 @@ function App() {
   }, [token, isAuthenticated, dispatch]);
 
   return (
-    <>
-      <ToastContainer theme="dark" position="top-right" />
+    <ThemeProvider>
+      <ToastContainer theme={isDark ? "dark" : "light"} position="top-right" />
       <Routes>
         <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
         <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
@@ -54,7 +69,7 @@ function App() {
         <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </>
+    </ThemeProvider>
   );
 }
 

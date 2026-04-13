@@ -29,24 +29,24 @@ const LoginPage = () => {
     };
 
     return (
-        <div className="min-h-screen bg-zinc-950 flex flex-col justify-center items-center relative overflow-hidden">
+        <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 flex flex-col justify-center items-center relative overflow-hidden">
             {/* Background Decorations */}
             <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-emerald-600/20 rounded-full blur-[100px] pointer-events-none"></div>
             <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-teal-600/20 rounded-full blur-[100px] pointer-events-none"></div>
 
-            <div className="z-10 w-full max-w-md p-8 bg-zinc-900/50 backdrop-blur-xl rounded-2xl border border-zinc-800 shadow-2xl">
+            <div className="z-10 w-full max-w-md p-8 bg-zinc-100 dark:bg-zinc-900/50 backdrop-blur-xl rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-2xl">
                 <div className="text-center mb-8">
                     <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-500 mb-2">
                         Welcome Back
                     </h1>
-                    <p className="text-zinc-400 text-sm">Enter your credentials to access your workspace</p>
+                    <p className="text-zinc-600 dark:text-zinc-400 text-sm">Enter your credentials to access your workspace</p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                     <div>
-                        <label className="block text-zinc-300 text-sm font-medium mb-2">Username</label>
+                        <label className="block text-zinc-700 dark:text-zinc-300 text-sm font-medium mb-2">Username</label>
                         <div className="relative">
-                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-zinc-500">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-zinc-500 dark:text-zinc-500">
                                 <Mail size={18} />
                             </div>
                             <input 
@@ -55,16 +55,16 @@ const LoginPage = () => {
                                 value={formData.username}
                                 onChange={handleChange}
                                 required
-                                className="w-full bg-zinc-800/50 border border-zinc-700 text-zinc-200 text-sm rounded-lg focus:ring-emerald-500 focus:border-emerald-500 block pl-10 p-3 transition-colors outline-none"
+                                className="w-full bg-white dark:bg-zinc-800/50 border border-zinc-300 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200 text-sm rounded-lg focus:ring-emerald-500 focus:border-emerald-500 block pl-10 p-3 transition-colors outline-none"
                                 placeholder="name@email.com"
                             />
                         </div>
                     </div>
 
                     <div>
-                        <label className="block text-zinc-300 text-sm font-medium mb-2">Password</label>
+                        <label className="block text-zinc-700 dark:text-zinc-300 text-sm font-medium mb-2">Password</label>
                         <div className="relative">
-                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-zinc-500">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-zinc-500 dark:text-zinc-500">
                                 <Lock size={18} />
                             </div>
                             <input 
@@ -73,7 +73,7 @@ const LoginPage = () => {
                                 value={formData.password}
                                 onChange={handleChange}
                                 required
-                                className="w-full bg-zinc-800/50 border border-zinc-700 text-zinc-200 text-sm rounded-lg focus:ring-emerald-500 focus:border-emerald-500 block pl-10 p-3 transition-colors outline-none"
+                                className="w-full bg-white dark:bg-zinc-800/50 border border-zinc-300 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200 text-sm rounded-lg focus:ring-emerald-500 focus:border-emerald-500 block pl-10 p-3 transition-colors outline-none"
                                 placeholder="••••••••"
                             />
                         </div>
@@ -95,7 +95,7 @@ const LoginPage = () => {
                     )}
                 </form>
 
-                <p className="mt-8 text-sm font-light text-center text-zinc-400">
+                <p className="mt-8 text-sm font-light text-center text-zinc-600 dark:text-zinc-400">
                     Don't have an account yet?{' '}
                     <Link to="/register" className="font-medium text-emerald-400 hover:text-emerald-300 transition-colors">
                         Sign up here
