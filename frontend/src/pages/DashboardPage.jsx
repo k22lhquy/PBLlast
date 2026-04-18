@@ -4,8 +4,9 @@ import { fetchAllConversations, createNewConversation, fetchMessages, setActiveC
 import { logout } from '../store/slices/authSlice';
 import { toggleTheme } from '../store/slices/themeSlice';
 import { chatApi } from '../api/chatApi';
-import { MessageSquare, Plus, LogOut, Send, Paperclip, Loader2, Bot, User, Trash2, FileText, Edit2, Info, X, Sun, Moon } from 'lucide-react';
+import { MessageSquare, Plus, LogOut, Send, Paperclip, Loader2, Bot, User, Trash2, FileText, Edit2, Info, X, Sun, Moon, Globe } from 'lucide-react';
 import { toast } from 'react-toastify';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const HighlightedChunk = ({ chunkText, answerText }) => {
     if (!chunkText) return null;
@@ -71,6 +72,8 @@ const HighlightedChunk = ({ chunkText, answerText }) => {
 
 const DashboardPage = () => {
     const dispatch = useDispatch();
+    const navigate = useNavigate();
+    const location = useLocation();
     const { user } = useSelector(state => state.auth);
     const { conversations, activeConversationId, messages, files, isSendingMessage } = useSelector(state => state.chat);
     const { isDark } = useSelector(state => state.theme);
@@ -81,6 +84,42 @@ const DashboardPage = () => {
     const [editingTitle, setEditingTitle] = useState("");
     const [selectedSource, setSelectedSource] = useState(null);
     const messagesEndRef = useRef(null);
+    const importTriggeredRef = useRef(false);
+
+    // Intercept Community imports
+    useEffect(() => {
+        if (location.state?.autoChatMsg && location.state?.importFileId && !importTriggeredRef.current) {
+            importTriggeredRef.current = true;
+            const msg = location.state.autoChatMsg;
+            const importId = location.state.importFileId;
+            navigate('.', { replace: true, state: {} }); // Clear state
+            
+            const startNewChatAndImport = async () => {
+                try {
+                    // Let initial mounts and fetchAllConversations finish to prevent State Reversion
+                    await new Promise(resolve => setTimeout(resolve, 800));
+
+                    toast.info("Initializing context vault...", { autoClose: 2000 });
+                    
+                    const newChatAction = await dispatch(createNewConversation()).unwrap();
+                    const newId = newChatAction.id;
+
+                    await chatApi.importCommunityFile(newId, importId);
+                    dispatch(fetchConversationFiles(newId));
+                    toast.success("Document imported successfully!");
+                    
+                    setTimeout(() => {
+                        handleSendMessage(null, msg, newId);
+                    }, 500);
+                } catch (err) {
+                    console.error(err);
+                    toast.error("Failed to initialize import session: " + (err.message || "Unknown error"));
+                }
+            };
+            startNewChatAndImport();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [location.state, navigate, dispatch]);
 
     // Initial load
     useEffect(() => {
@@ -178,13 +217,13 @@ const DashboardPage = () => {
         }
     };
 
-    const handleSendMessage = async (e) => {
-        e.preventDefault();
-        if (!inputMsg.trim()) return;
+    const handleSendMessage = async (e, overrideMsg = null, forceConvId = null) => {
+        if (e) e.preventDefault();
+        const userMsg = overrideMsg || inputMsg;
+        if (!userMsg.trim()) return;
 
-        let targetConversationId = activeConversationId;
-        const userMsg = inputMsg;
-        setInputMsg("");
+        let targetConversationId = forceConvId || activeConversationId;
+        if (!overrideMsg) setInputMsg("");
 
         if (!targetConversationId) {
             dispatch(setSendingMessage(true));
@@ -249,7 +288,16 @@ const DashboardPage = () => {
                     </h2>
                 </div>
 
-                <div className="p-4">
+                <div className="p-4 flex flex-col gap-2">
+                    <div className="flex bg-zinc-200/50 dark:bg-zinc-950/50 p-1 rounded-xl mb-2">
+                        <button onClick={() => navigate('/')} className="flex-1 py-1.5 text-xs font-semibold bg-white dark:bg-zinc-800 text-emerald-600 dark:text-emerald-400 rounded-lg shadow-sm flex items-center justify-center gap-1.5">
+                            <MessageSquare size={14}/> Workspace
+                        </button>
+                        <button onClick={() => navigate('/community')} className="flex-1 py-1.5 text-xs font-semibold hover:bg-white hover:shadow-sm dark:hover:bg-zinc-800 text-zinc-600 hover:text-emerald-600 dark:text-zinc-400 dark:hover:text-emerald-400 rounded-lg transition-all flex items-center justify-center gap-1.5">
+                            <Globe size={14}/> Community
+                        </button>
+                    </div>
+
                     <button
                         onClick={handleNewChat}
                         className="w-full flex items-center gap-2 justify-center py-3 px-4 bg-white dark:bg-zinc-800 hover:bg-zinc-200 dark:bg-zinc-700 text-zinc-800 dark:text-zinc-200 rounded-xl transition-all border border-zinc-300 dark:border-zinc-700 hover:border-zinc-600 shadow-sm"

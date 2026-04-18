@@ -19,5 +19,6 @@ export const chatApi = {
   sendMessage: (conversationId, message) => axiosClient.post('/messages/send_message', {
       conversationId: conversationId,
       message: message
-  })
+  }),
+  importCommunityFile: (conversationId, fileId) => axiosClient.post(`/chat-box/import-file/${conversationId}`, { file_id: fileId })
 };

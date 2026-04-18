@@ -7,6 +7,7 @@ import { fetchMe } from './store/slices/authSlice';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
+import CommunityPage from './pages/CommunityPage';
 
 const ThemeProvider = ({ children }) => {
   const { isDark } = useSelector((state) => state.theme);
@@ -67,6 +68,8 @@ function App() {
         <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
         
         <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+        <Route path="/community" element={<ProtectedRoute><CommunityPage /></ProtectedRoute>} />
+        
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </ThemeProvider>
