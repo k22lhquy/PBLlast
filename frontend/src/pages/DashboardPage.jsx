@@ -2,9 +2,9 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchAllConversations, createNewConversation, fetchMessages, setActiveConversationId, addMessageLocally, setSendingMessage, fetchConversationFiles, updateConversationTitleLocally } from '../store/slices/chatSlice';
 import { logout } from '../store/slices/authSlice';
-import { toggleTheme } from '../store/slices/themeSlice';
+import { toggleThemeAsync } from '../store/slices/themeSlice';
 import { chatApi } from '../api/chatApi';
-import { MessageSquare, Plus, LogOut, Send, Paperclip, Loader2, Bot, User, Trash2, FileText, Edit2, Info, X, Sun, Moon, Globe } from 'lucide-react';
+import { MessageSquare, Plus, LogOut, Send, Paperclip, Loader2, Bot, User, Trash2, FileText, Edit2, Info, X, Sun, Moon, Globe, HelpCircle } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -289,12 +289,15 @@ const DashboardPage = () => {
                 </div>
 
                 <div className="p-4 flex flex-col gap-2">
-                    <div className="flex bg-zinc-200/50 dark:bg-zinc-950/50 p-1 rounded-xl mb-2">
-                        <button onClick={() => navigate('/')} className="flex-1 py-1.5 text-xs font-semibold bg-white dark:bg-zinc-800 text-emerald-600 dark:text-emerald-400 rounded-lg shadow-sm flex items-center justify-center gap-1.5">
-                            <MessageSquare size={14}/> Workspace
+                    <div className="grid grid-cols-3 bg-zinc-200/50 dark:bg-zinc-950/50 p-1 rounded-xl mb-2 gap-0.5">
+                        <button onClick={() => navigate('/')} className="py-1.5 text-xs font-semibold bg-white dark:bg-zinc-800 text-emerald-600 dark:text-emerald-400 rounded-lg shadow-sm flex items-center justify-center gap-1">
+                            <MessageSquare size={12}/> Chat
                         </button>
-                        <button onClick={() => navigate('/community')} className="flex-1 py-1.5 text-xs font-semibold hover:bg-white hover:shadow-sm dark:hover:bg-zinc-800 text-zinc-600 hover:text-emerald-600 dark:text-zinc-400 dark:hover:text-emerald-400 rounded-lg transition-all flex items-center justify-center gap-1.5">
-                            <Globe size={14}/> Community
+                        <button onClick={() => navigate('/community')} className="py-1.5 text-xs font-semibold hover:bg-white hover:shadow-sm dark:hover:bg-zinc-800 text-zinc-600 hover:text-emerald-600 dark:text-zinc-400 dark:hover:text-emerald-400 rounded-lg transition-all flex items-center justify-center gap-1">
+                            <Globe size={12}/> Share
+                        </button>
+                        <button onClick={() => navigate('/qa')} className="py-1.5 text-xs font-semibold hover:bg-white hover:shadow-sm dark:hover:bg-zinc-800 text-zinc-600 hover:text-emerald-600 dark:text-zinc-400 dark:hover:text-emerald-400 rounded-lg transition-all flex items-center justify-center gap-1">
+                            <HelpCircle size={12}/> Q&A
                         </button>
                     </div>
 
@@ -357,17 +360,20 @@ const DashboardPage = () => {
                 </div>
 
                 <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 flex items-center justify-between bg-zinc-100 dark:bg-zinc-900/50">
-                    <div className="flex items-center gap-3">
+                    <div 
+                        onClick={() => navigate('/profile')}
+                        className="flex items-center gap-3 cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800 p-2 -ml-2 rounded-xl transition-colors"
+                    >
                         <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold text-sm shadow-lg">
-                            {user?.username?.charAt(0).toUpperCase() || 'U'}
+                            {user?.username?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || 'U'}
                         </div>
                         <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300 truncate max-w-[120px]">
-                            {user?.username || 'User'}
+                            {user?.username || user?.email?.split('@')[0] || 'User'}
                         </span>
                     </div>
                     <div className="flex gap-1">
                         <button
-                            onClick={() => dispatch(toggleTheme())}
+                            onClick={() => dispatch(toggleThemeAsync())}
                             className="p-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-zinc-100 hover:bg-white dark:bg-zinc-800 rounded-lg transition-colors"
                             title="Toggle Theme"
                         >

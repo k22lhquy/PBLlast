@@ -9,5 +9,7 @@ export const communityApi = {
     },
     createPost: (data) => axiosClient.post('/community/', data),
     toggleLike: (postId) => axiosClient.post(`/community/${postId}/like`),
-    reportPost: (postId) => axiosClient.post(`/community/${postId}/report`)
+    reportPost: (postId) => axiosClient.post(`/community/${postId}/report`),
+    getMyPosts: () => axiosClient.get('/community/me/posts'),
+    deletePost: (postId) => axiosClient.delete(`/community/posts/${postId}`)
 };

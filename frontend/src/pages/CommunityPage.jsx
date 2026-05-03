@@ -106,7 +106,7 @@ const CommunityPage = () => {
             </header>
 
             {/* Main Feed */}
-            <main className="flex-1 max-w-5xl w-full mx-auto p-6 space-y-6 overflow-y-auto">
+            <main className="flex-1 max-w-[95%] w-full mx-auto p-6 space-y-6 overflow-y-auto">
                 {isLoading ? (
                     <div className="flex justify-center p-12">
                         <div className="w-8 h-8 rounded-full border-2 border-emerald-500 border-t-transparent animate-spin"></div>
@@ -117,7 +117,7 @@ const CommunityPage = () => {
                         <p>No community documents shared yet. Be the first!</p>
                     </div>
                 ) : (
-                    <div className="flex flex-col gap-5 max-w-2xl mx-auto w-full">
+                    <div className="flex flex-col gap-5 max-w-screen-xl mx-auto w-full">
                         {posts.map(post => {
                             const isLiked = post.likes.includes(user?.user_id);
                             return (
