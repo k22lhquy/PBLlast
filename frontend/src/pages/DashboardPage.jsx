@@ -248,7 +248,8 @@ const DashboardPage = () => {
             const res = await chatApi.sendMessage(targetConversationId, userMsg);
             const answer = res.data.answer || "";
             const sources = res.data.sources || [];
-            dispatch(addMessageLocally({ role: "assistant", content: answer, sources: sources }));
+            const community_references = res.data.community_references || null;
+            dispatch(addMessageLocally({ role: "assistant", content: answer, sources, community_references }));
 
             // Auto-rename logic for the first message
             if (isFirstMessage && answer) {
@@ -433,6 +434,35 @@ const DashboardPage = () => {
                                                             [{i + 1}] {src.file_name}
                                                         </button>
                                                     ))}
+                                                </div>
+                                            )}
+
+                                            {/* Community References Card */}
+                                            {!isUser && msg.community_references && (msg.community_references.posts?.length > 0 || msg.community_references.questions?.length > 0) && (
+                                                <div className="mt-4 pt-3 border-t border-teal-500/20">
+                                                    <p className="text-xs font-bold text-teal-500 dark:text-teal-400 mb-2 flex items-center gap-1.5">
+                                                        <Globe size={12} /> Thảo luận cộng đồng liên quan
+                                                    </p>
+                                                    <div className="space-y-2">
+                                                        {msg.community_references.posts?.map((p) => (
+                                                            <div key={p.id} onClick={() => navigate('/community')} className="flex items-start gap-2 p-2 bg-teal-500/5 hover:bg-teal-500/10 border border-teal-500/20 rounded-xl cursor-pointer transition-all group">
+                                                                <FileText size={14} className="text-teal-400 shrink-0 mt-0.5" />
+                                                                <div className="flex-1 min-w-0">
+                                                                    <p className="text-xs font-semibold text-zinc-700 dark:text-zinc-200 truncate group-hover:text-teal-500 transition-colors">{p.title}</p>
+                                                                    <p className="text-xs text-zinc-500">@{p.username}</p>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                        {msg.community_references.questions?.map((q) => (
+                                                            <div key={q.id} onClick={() => navigate(`/qa/${q.id}`)} className="flex items-start gap-2 p-2 bg-teal-500/5 hover:bg-teal-500/10 border border-teal-500/20 rounded-xl cursor-pointer transition-all group">
+                                                                <HelpCircle size={14} className="text-teal-400 shrink-0 mt-0.5" />
+                                                                <div className="flex-1 min-w-0">
+                                                                    <p className="text-xs font-semibold text-zinc-700 dark:text-zinc-200 line-clamp-2 group-hover:text-teal-500 transition-colors">{q.body}</p>
+                                                                    <p className="text-xs text-zinc-500">@{q.username} · {q.answer_count || 0} trả lời</p>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
                                                 </div>
                                             )}
                                         </div>

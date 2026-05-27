@@ -63,7 +63,7 @@ const chatSlice = createSlice({
       state.files = []; // Clear current files
     },
     addMessageLocally: (state, action) => {
-      state.messages.push(action.payload);
+      state.messages.push(action.payload);  // payload includes community_references if present
     },
     setSendingMessage: (state, action) => {
         state.isSendingMessage = action.payload;

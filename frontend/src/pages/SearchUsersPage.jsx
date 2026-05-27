@@ -50,13 +50,15 @@ const SearchUsersPage = () => {
 
     return (
         <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 flex flex-col">
-            <header className="px-6 py-4 border-b border-zinc-200 dark:border-zinc-800 bg-white/50 dark:bg-zinc-900/50 backdrop-blur sticky top-0 z-10 flex items-center gap-4">
-                <button onClick={() => navigate(-1)} className="p-2 text-zinc-500 hover:text-emerald-500 hover:bg-emerald-500/10 rounded-xl transition-all">
-                    <ArrowLeft size={20} />
-                </button>
-                <div>
-                    <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-teal-500">Tìm kiếm</h1>
-                    <p className="text-sm text-zinc-500 dark:text-zinc-400">Tìm thành viên, bài chia sẻ và câu hỏi</p>
+            <header className="px-6 py-4 border-b border-zinc-200 dark:border-zinc-800 bg-white/50 dark:bg-zinc-900/50 backdrop-blur sticky top-0 z-10 flex flex-col sm:flex-row sm:items-center gap-4">
+                <div className="flex items-center gap-4">
+                    <button onClick={() => navigate(-1)} className="p-2 text-zinc-500 hover:text-emerald-500 hover:bg-emerald-500/10 rounded-xl transition-all shrink-0">
+                        <ArrowLeft size={20} />
+                    </button>
+                    <div>
+                        <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-teal-500">Tìm kiếm</h1>
+                        <p className="text-sm text-zinc-500 dark:text-zinc-400">Tìm thành viên, bài chia sẻ và câu hỏi</p>
+                    </div>
                 </div>
             </header>
 
@@ -154,6 +156,13 @@ const SearchUsersPage = () => {
                                         <span>·</span>
                                         <span className="flex items-center gap-1 text-red-400"><Heart size={10} className="fill-current" />{p.likes?.length || 0}</span>
                                     </div>
+                                    {p.tags && p.tags.length > 0 && (
+                                        <div className="flex items-center gap-2 mt-2 flex-wrap">
+                                            {p.tags.map(t => (
+                                                <span key={t} className="bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full text-xs text-zinc-500">#{t}</span>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                         </>

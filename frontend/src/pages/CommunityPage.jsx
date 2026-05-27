@@ -17,6 +17,7 @@ const CommunityPage = () => {
     const [reportingPostId, setReportingPostId] = useState(null);
     const [uploadTitle, setUploadTitle] = useState("");
     const [uploadDesc, setUploadDesc] = useState("");
+    const [uploadTags, setUploadTags] = useState("");
     const [uploadFile, setUploadFile] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -59,18 +60,24 @@ const CommunityPage = () => {
             fd.append("file", uploadFile);
             const uploadRes = await communityApi.uploadCommunityFile(fd);
             const fileData = uploadRes.data;
+            const tagsArray = uploadTags.split(',')
+                .map(t => t.trim())
+                .filter(t => t.length > 0);
+
             await communityApi.createPost({
                 title: uploadTitle,
                 description: uploadDesc,
                 file_id: fileData.id,
                 file_name: fileData.fileName,
-                storage_url: fileData.storageUrl
+                storage_url: fileData.storageUrl,
+                tags: tagsArray
             });
 
             toast.success("Đã chia sẻ lên cộng đồng!");
             setIsUploadModalOpen(false);
             setUploadTitle("");
             setUploadDesc("");
+            setUploadTags("");
             setUploadFile(null);
             dispatch(fetchPosts());
         } catch (err) {
@@ -92,7 +99,7 @@ const CommunityPage = () => {
             {/* Header */}
             <header className="px-6 py-4 border-b border-zinc-200 dark:border-zinc-800 bg-white/50 dark:bg-zinc-900/50 backdrop-blur sticky top-0 z-10 flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                    <button onClick={() => navigate('/')} className="p-2 text-zinc-500 hover:text-emerald-500 hover:bg-emerald-500/10 rounded-xl transition-all">
+                    <button onClick={() => navigate(-1)} className="p-2 text-zinc-500 hover:text-emerald-500 hover:bg-emerald-500/10 rounded-xl transition-all">
                         <ArrowLeft size={20} />
                     </button>
                     <div>
@@ -145,6 +152,15 @@ const CommunityPage = () => {
                                     </div>
 
                                     <h3 className="font-bold text-lg mb-2 text-zinc-800 dark:text-zinc-100">{post.title}</h3>
+                                    {post.tags && post.tags.length > 0 && (
+                                        <div className="flex flex-wrap gap-2 mb-3">
+                                            {post.tags.map((tag, idx) => (
+                                                <span key={idx} className="px-2 py-0.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 text-xs rounded-md">
+                                                    #{tag}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
                                     <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-4 whitespace-pre-wrap flex-1 min-h-[60px]">
                                         {post.description}
                                     </p>
@@ -212,6 +228,15 @@ const CommunityPage = () => {
                                     required value={uploadDesc} onChange={e => setUploadDesc(e.target.value)} rows="3"
                                     className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-2.5 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all resize-none"
                                     placeholder="Explain why this document is useful..."
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium mb-1.5 opacity-80">Tags (ngăn cách bằng dấu phẩy)</label>
+                                <input
+                                    type="text" value={uploadTags} onChange={e => setUploadTags(e.target.value)}
+                                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-2.5 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all"
+                                    placeholder="Ví dụ: dinh dưỡng, gạo lứt..."
                                 />
                             </div>
 
