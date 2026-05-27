@@ -7,6 +7,7 @@ export const qaApi = {
     createQuestion: (body, tags) => axiosClient.post('/qa/questions', { body, tags }),
     getMyQuestions: () => axiosClient.get('/qa/me/questions'),
     deleteQuestion: (questionId) => axiosClient.delete(`/qa/questions/${questionId}`),
+    reportQuestion: (questionId, reason) => axiosClient.post(`/qa/questions/${questionId}/report`, { reason }),
 
     // Answers
     getAnswers: (questionId) => axiosClient.get(`/qa/questions/${questionId}/answers`),

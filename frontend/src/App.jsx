@@ -11,6 +11,11 @@ import CommunityPage from './pages/CommunityPage';
 import QAPage from './pages/QAPage';
 import QADetailPage from './pages/QADetailPage';
 import ProfilePage from './pages/ProfilePage';
+import PublicProfilePage from './pages/PublicProfilePage';
+import SearchUsersPage from './pages/SearchUsersPage';
+import AdminLoginPage from './pages/AdminLoginPage';
+import AdminPage from './pages/AdminPage';
+
 
 const ThemeProvider = ({ children }) => {
   const { isDark } = useSelector((state) => state.theme);
@@ -53,30 +58,45 @@ const PublicRoute = ({ children }) => {
 
 function App() {
   const dispatch = useDispatch();
-  const { token, isAuthenticated } = useSelector((state) => state.auth);
+  const { token, user } = useSelector((state) => state.auth);
   const { isDark } = useSelector((state) => state.theme);
 
   // Initialize Me State
   useEffect(() => {
-    if (token && !isAuthenticated) {
+    if (token && !user) {
       dispatch(fetchMe());
     }
-  }, [token, isAuthenticated, dispatch]);
+  }, [token, user, dispatch]);
 
   return (
     <ThemeProvider>
       <ToastContainer theme={isDark ? "dark" : "light"} position="top-right" />
       <Routes>
         <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
+        <Route path="/admin-login" element={<PublicRoute><AdminLoginPage /></PublicRoute>} />
         <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
         
         <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
         <Route path="/community" element={<ProtectedRoute><CommunityPage /></ProtectedRoute>} />
         <Route path="/qa" element={<ProtectedRoute><QAPage /></ProtectedRoute>} />
         <Route path="/qa/:id" element={<ProtectedRoute><QADetailPage /></ProtectedRoute>} />
-        <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
-        
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="/profile" element={
+              <ProtectedRoute>
+                <ProfilePage />
+              </ProtectedRoute>
+            } />
+        <Route path="/user/:id" element={
+              <ProtectedRoute>
+                <PublicProfilePage />
+              </ProtectedRoute>
+            } />
+        <Route path="/search-users" element={
+              <ProtectedRoute>
+                <SearchUsersPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin" element={<ProtectedRoute><AdminPage /></ProtectedRoute>} />
+            <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </ThemeProvider>
   );

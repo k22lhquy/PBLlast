@@ -4,7 +4,7 @@ import { fetchAllConversations, createNewConversation, fetchMessages, setActiveC
 import { logout } from '../store/slices/authSlice';
 import { toggleThemeAsync } from '../store/slices/themeSlice';
 import { chatApi } from '../api/chatApi';
-import { MessageSquare, Plus, LogOut, Send, Paperclip, Loader2, Bot, User, Trash2, FileText, Edit2, Info, X, Sun, Moon, Globe, HelpCircle } from 'lucide-react';
+import { MessageSquare, Plus, LogOut, Send, Paperclip, Loader2, Bot, User, Trash2, FileText, Edit2, Info, X, Sun, Moon, Globe, HelpCircle, Search } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -13,23 +13,23 @@ const HighlightedChunk = ({ chunkText, answerText }) => {
     if (!answerText) return <p className="text-zinc-700 dark:text-zinc-300">{chunkText}</p>;
 
     const stopWords = new Set([
-        "trong", "người", "những", "nhiều", "được", "không", "cùng", "rằng", "thực", "hiện", 
-        "trên", "dưới", "ngoài", "bằng", "theo", "đang", "từng", "cũng", "định", "phải", 
-        "nhưng", "khác", "nào", "mới", "với", "cho", "của", "các", "một", "như", "này", 
+        "trong", "người", "những", "nhiều", "được", "không", "cùng", "rằng", "thực", "hiện",
+        "trên", "dưới", "ngoài", "bằng", "theo", "đang", "từng", "cũng", "định", "phải",
+        "nhưng", "khác", "nào", "mới", "với", "cho", "của", "các", "một", "như", "này",
         "đó", "nọ", "kia", "đây", "rất", "quá", "lắm", "hơn", "nhất", "làm", "sao", "thế",
         "thì", "mà", "là", "nếu", "có", "tại", "sẽ", "đã", "vẫn", "chưa", "về", "ra", "vào"
     ]);
 
     const getKeywords = (text) => {
         return text.toLowerCase()
-                   .replace(/[^\p{L}\p{N}\s]/gu, ' ')
-                   .split(/\s+/)
-                   .filter(w => w.length >= 2 && !stopWords.has(w));
+            .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+            .split(/\s+/)
+            .filter(w => w.length >= 2 && !stopWords.has(w));
     };
 
     const answerWords = new Set(getKeywords(answerText));
     const paragraphs = chunkText.split(/\n+/);
-    
+
     let maxScore = 0;
     const scoredParagraphs = paragraphs.map(para => {
         if (!para.trim()) return { text: para, sentences: [] };
@@ -37,7 +37,7 @@ const HighlightedChunk = ({ chunkText, answerText }) => {
         const scoredSentences = sentences.map(s => {
             const sWords = getKeywords(s);
             let count = 0;
-            sWords.forEach(w => { if(answerWords.has(w)) count++; });
+            sWords.forEach(w => { if (answerWords.has(w)) count++; });
             if (count > maxScore) maxScore = count;
             return { text: s, score: count };
         });
@@ -93,21 +93,21 @@ const DashboardPage = () => {
             const msg = location.state.autoChatMsg;
             const importId = location.state.importFileId;
             navigate('.', { replace: true, state: {} }); // Clear state
-            
+
             const startNewChatAndImport = async () => {
                 try {
                     // Let initial mounts and fetchAllConversations finish to prevent State Reversion
                     await new Promise(resolve => setTimeout(resolve, 800));
 
                     toast.info("Initializing context vault...", { autoClose: 2000 });
-                    
+
                     const newChatAction = await dispatch(createNewConversation()).unwrap();
                     const newId = newChatAction.id;
 
                     await chatApi.importCommunityFile(newId, importId);
                     dispatch(fetchConversationFiles(newId));
                     toast.success("Document imported successfully!");
-                    
+
                     setTimeout(() => {
                         handleSendMessage(null, msg, newId);
                     }, 500);
@@ -167,11 +167,11 @@ const DashboardPage = () => {
     const handleFinishRename = async (e, convId) => {
         if (e) e.stopPropagation();
         const finalTitle = editingTitle.trim() || "New Chat";
-        
+
         // Optimistic UI updates
         dispatch(updateConversationTitleLocally({ id: convId, title: finalTitle }));
         setEditingChatId(null);
-        
+
         try {
             await chatApi.renameConversation(convId, finalTitle);
         } catch {
@@ -248,14 +248,14 @@ const DashboardPage = () => {
             const res = await chatApi.sendMessage(targetConversationId, userMsg);
             const answer = res.data.answer || "";
             const sources = res.data.sources || [];
-            dispatch(addMessageLocally({ role: "assistant", content: answer, sources: sources })); 
+            dispatch(addMessageLocally({ role: "assistant", content: answer, sources: sources }));
 
             // Auto-rename logic for the first message
             if (isFirstMessage && answer) {
                 const words = answer.trim().split(/\s+/);
                 const firstFewWords = words.slice(0, 5).join(' ');
                 const newTitle = firstFewWords + (words.length > 5 ? '...' : '');
-                
+
                 chatApi.renameConversation(targetConversationId, newTitle).catch(console.error);
                 dispatch(updateConversationTitleLocally({ id: targetConversationId, title: newTitle }));
             }
@@ -289,15 +289,18 @@ const DashboardPage = () => {
                 </div>
 
                 <div className="p-4 flex flex-col gap-2">
-                    <div className="grid grid-cols-3 bg-zinc-200/50 dark:bg-zinc-950/50 p-1 rounded-xl mb-2 gap-0.5">
+                    <div className="grid grid-cols-2 bg-zinc-200/50 dark:bg-zinc-950/50 p-1 rounded-xl mb-2 gap-0.5">
                         <button onClick={() => navigate('/')} className="py-1.5 text-xs font-semibold bg-white dark:bg-zinc-800 text-emerald-600 dark:text-emerald-400 rounded-lg shadow-sm flex items-center justify-center gap-1">
-                            <MessageSquare size={12}/> Chat
+                            <MessageSquare size={12} /> Nhắn tin
                         </button>
                         <button onClick={() => navigate('/community')} className="py-1.5 text-xs font-semibold hover:bg-white hover:shadow-sm dark:hover:bg-zinc-800 text-zinc-600 hover:text-emerald-600 dark:text-zinc-400 dark:hover:text-emerald-400 rounded-lg transition-all flex items-center justify-center gap-1">
-                            <Globe size={12}/> Share
+                            <Globe size={12} /> Chia sẻ
                         </button>
                         <button onClick={() => navigate('/qa')} className="py-1.5 text-xs font-semibold hover:bg-white hover:shadow-sm dark:hover:bg-zinc-800 text-zinc-600 hover:text-emerald-600 dark:text-zinc-400 dark:hover:text-emerald-400 rounded-lg transition-all flex items-center justify-center gap-1">
-                            <HelpCircle size={12}/> Q&A
+                            <HelpCircle size={12} /> Hỏi & Đáp
+                        </button>
+                        <button onClick={() => navigate('/search-users')} className="py-1.5 text-xs font-semibold hover:bg-white hover:shadow-sm dark:hover:bg-zinc-800 text-zinc-600 hover:text-emerald-600 dark:text-zinc-400 dark:hover:text-emerald-400 rounded-lg transition-all flex items-center justify-center gap-1">
+                            <Search size={12} /> Tìm kiếm
                         </button>
                     </div>
 
@@ -306,7 +309,7 @@ const DashboardPage = () => {
                         className="w-full flex items-center gap-2 justify-center py-3 px-4 bg-white dark:bg-zinc-800 hover:bg-zinc-200 dark:bg-zinc-700 text-zinc-800 dark:text-zinc-200 rounded-xl transition-all border border-zinc-300 dark:border-zinc-700 hover:border-zinc-600 shadow-sm"
                     >
                         <Plus size={18} />
-                        <span className="font-medium">New Conversation</span>
+                        <span className="font-medium">Tin nhắn mới</span>
                     </button>
                 </div>
 
@@ -320,7 +323,7 @@ const DashboardPage = () => {
                             <div className="flex items-center gap-3 overflow-hidden flex-1">
                                 <MessageSquare size={18} className="shrink-0" />
                                 {editingChatId === conv.id ? (
-                                    <input 
+                                    <input
                                         type="text"
                                         value={editingTitle}
                                         onChange={(e) => setEditingTitle(e.target.value)}
@@ -334,7 +337,7 @@ const DashboardPage = () => {
                                         className="flex-1 min-w-0 bg-zinc-50 dark:bg-zinc-950 text-sm font-medium text-zinc-800 dark:text-zinc-200 border border-emerald-500 rounded px-2 py-0.5 outline-none"
                                     />
                                 ) : (
-                                    <span className="truncate text-sm font-medium">{conv.title || "New Chat"}</span>
+                                    <span className="truncate text-sm font-medium">{conv.title || "Đoạn chat mới"}</span>
                                 )}
                             </div>
                             {editingChatId !== conv.id && (
@@ -342,14 +345,14 @@ const DashboardPage = () => {
                                     <button
                                         onClick={(e) => handleStartRename(e, conv)}
                                         className="p-1 text-zinc-500 dark:text-zinc-500 hover:text-emerald-400 transition-colors"
-                                        title="Rename"
+                                        title="Đổi tên"
                                     >
                                         <Edit2 size={14} />
                                     </button>
                                     <button
                                         onClick={(e) => handleDeleteConversation(conv.id, e)}
                                         className="p-1 text-zinc-500 dark:text-zinc-500 hover:text-red-400 transition-colors"
-                                        title="Delete"
+                                        title="Xóa"
                                     >
                                         <Trash2 size={14} />
                                     </button>
@@ -358,9 +361,8 @@ const DashboardPage = () => {
                         </div>
                     ))}
                 </div>
-
                 <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 flex items-center justify-between bg-zinc-100 dark:bg-zinc-900/50">
-                    <div 
+                    <div
                         onClick={() => navigate('/profile')}
                         className="flex items-center gap-3 cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800 p-2 -ml-2 rounded-xl transition-colors"
                     >
@@ -375,14 +377,14 @@ const DashboardPage = () => {
                         <button
                             onClick={() => dispatch(toggleThemeAsync())}
                             className="p-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-zinc-100 hover:bg-white dark:bg-zinc-800 rounded-lg transition-colors"
-                            title="Toggle Theme"
+                            title="Đổi giao diện"
                         >
                             {isDark ? <Sun size={18} /> : <Moon size={18} />}
                         </button>
                         <button
                             onClick={handleLogout}
                             className="p-2 text-zinc-600 dark:text-zinc-400 hover:text-red-500 hover:bg-white dark:bg-zinc-800 rounded-lg transition-colors"
-                            title="Logout"
+                            title="Đăng xuất"
                         >
                             <LogOut size={18} />
                         </button>
@@ -417,13 +419,13 @@ const DashboardPage = () => {
                                         </div>
                                         <div className={`p-4 rounded-2xl max-w-[80%] shadow-sm ${isUser ? 'bg-emerald-600 text-white rounded-tr-sm' : 'bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-200 rounded-tl-sm'}`}>
                                             <p className="whitespace-pre-wrap text-sm leading-relaxed">{msg.content}</p>
-                                            
+
                                             {/* RAG Citations Rendering */}
                                             {msg.sources && msg.sources.length > 0 && (
                                                 <div className="mt-4 pt-3 border-t border-zinc-200 dark:border-zinc-800/50 flex flex-wrap gap-2">
                                                     {msg.sources.map((src, i) => (
-                                                        <button 
-                                                            key={i} 
+                                                        <button
+                                                            key={i}
                                                             onClick={() => setSelectedSource({ ...src, index: i + 1, answer: msg.content })}
                                                             className="text-xs bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 hover:bg-white dark:bg-zinc-800 hover:text-emerald-400 hover:border-emerald-500/30 transition-all font-medium"
                                                         >
@@ -469,7 +471,7 @@ const DashboardPage = () => {
                                         value={inputMsg}
                                         onChange={(e) => setInputMsg(e.target.value)}
                                         disabled={isSendingMessage || isUploading}
-                                        placeholder="Send a message to Nexus..."
+                                        placeholder="Nhập tin nhắn..."
                                         className="flex-1 bg-transparent border-none text-zinc-800 dark:text-zinc-200 placeholder-zinc-500 text-sm px-4 py-4 focus:outline-none disabled:opacity-50"
                                     />
 
@@ -483,7 +485,7 @@ const DashboardPage = () => {
                                         </button>
                                     </div>
                                 </form>
-                                <p className="text-center text-xs text-zinc-500 dark:text-zinc-500 dark:text-zinc-600 mt-3 font-medium">Nexus RAG can make mistakes. Verify important information.</p>
+                                <p className="text-center text-xs text-zinc-500 dark:text-zinc-500 dark:text-zinc-600 mt-3 font-medium">Nexus RAG có thể mắc lỗi. Vui lòng kiểm tra lại các thông tin quan trọng.</p>
                             </div>
                         </div>
                     </>
@@ -493,7 +495,7 @@ const DashboardPage = () => {
                         <div className="w-20 h-20 rounded-3xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-2xl flex items-center justify-center mb-10 transform hover:scale-105 transition-transform">
                             <Bot size={44} className="text-emerald-500" />
                         </div>
-                        <h2 className="text-3xl sm:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-zinc-200 to-zinc-400 mb-10 text-center tracking-tight">How can I assist you today?</h2>
+                        <h2 className="text-3xl sm:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-zinc-200 to-zinc-400 mb-10 text-center tracking-tight">Hôm nay tôi có thể giúp gì cho bạn?</h2>
 
                         <div className="w-full max-w-3xl relative">
                             <form onSubmit={handleSendMessage} className="relative flex items-center bg-zinc-100 dark:bg-zinc-900/80 border border-zinc-300 dark:border-zinc-700/80 rounded-2xl shadow-2xl focus-within:border-emerald-500/80 focus-within:ring-2 focus-within:ring-emerald-500/20 transition-all p-2 backdrop-blur-sm">
@@ -510,7 +512,7 @@ const DashboardPage = () => {
                                     value={inputMsg}
                                     onChange={(e) => setInputMsg(e.target.value)}
                                     disabled={isSendingMessage || isUploading}
-                                    placeholder="Message Nexus or upload a file..."
+                                    placeholder="Nhập tin nhắn hoặc tải tệp lên..."
                                     className="flex-1 bg-transparent border-none text-zinc-800 dark:text-zinc-200 placeholder-zinc-500 text-lg sm:text-xl px-4 py-4 focus:outline-none disabled:opacity-50"
                                     autoFocus
                                 />
@@ -535,7 +537,7 @@ const DashboardPage = () => {
                 <div className="w-72 bg-zinc-100 dark:bg-zinc-900 border-l border-zinc-200 dark:border-zinc-800 flex flex-col transition-all duration-300 z-10">
                     <div className="h-16 border-b border-zinc-200 dark:border-zinc-800 flex items-center px-4">
                         <h3 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider flex items-center gap-2">
-                            <FileText size={16} /> Data Context
+                            <FileText size={16} /> Dữ liệu ngữ cảnh
                         </h3>
                     </div>
                     <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
@@ -544,8 +546,8 @@ const DashboardPage = () => {
                                 <div className="w-12 h-12 rounded-full bg-white dark:bg-zinc-800 mx-auto flex items-center justify-center mb-3">
                                     <Paperclip size={20} className="text-zinc-500 dark:text-zinc-500" />
                                 </div>
-                                <p className="text-sm text-zinc-600 dark:text-zinc-400 font-medium">No files uploaded.</p>
-                                <p className="text-xs text-zinc-500 dark:text-zinc-500 mt-1">Upload a PDF or TXT to give the bot knowledge.</p>
+                                <p className="text-sm text-zinc-600 dark:text-zinc-400 font-medium">Chưa có tệp nào được tải lên.</p>
+                                <p className="text-xs text-zinc-500 dark:text-zinc-500 mt-1">Tải lên PDF hoặc TXT để cung cấp thêm ngữ cảnh cho bot.</p>
                             </div>
                         ) : (
                             files.map(f => (
@@ -560,7 +562,7 @@ const DashboardPage = () => {
                                     <button
                                         onClick={() => handleDeleteFile(f.id)}
                                         className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 p-1.5 bg-zinc-100 dark:bg-zinc-900 rounded-md text-zinc-600 dark:text-zinc-400 hover:text-red-400 hover:bg-red-500/10 transition-all border border-zinc-300 dark:border-zinc-700"
-                                        title="Delete File"
+                                        title="Xóa tệp"
                                     >
                                         <Trash2 size={14} />
                                     </button>
@@ -593,7 +595,7 @@ const DashboardPage = () => {
                             </div>
                         </div>
                         <div className="px-6 py-3 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900 flex justify-between items-center">
-                            <span className="text-xs text-zinc-500 dark:text-zinc-500 flex items-center gap-1"><Info size={12}/> Exact document snippet retrieved by Reranking model</span>
+                            <span className="text-xs text-zinc-500 dark:text-zinc-500 flex items-center gap-1"><Info size={12} /> Exact document snippet retrieved by Reranking model</span>
                             <button onClick={() => setSelectedSource(null)} className="text-xs font-semibold px-4 py-2 bg-white dark:bg-zinc-800 hover:bg-zinc-200 dark:bg-zinc-700 text-zinc-800 dark:text-zinc-200 rounded-lg transition-colors">Close Viewer</button>
                         </div>
                     </div>

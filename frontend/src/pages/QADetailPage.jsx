@@ -4,6 +4,7 @@ import { useSelector } from 'react-redux';
 import { qaApi } from '../api/qaApi';
 import { ArrowLeft, Heart, Send, ImageIcon, X } from 'lucide-react';
 import { toast } from 'react-toastify';
+import ReportModal from '../components/ReportModal';
 
 const QADetailPage = () => {
     const { id } = useParams();
@@ -13,6 +14,7 @@ const QADetailPage = () => {
     const [question, setQuestion] = useState(null);
     const [answers, setAnswers] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [isReportOpen, setIsReportOpen] = useState(false);
     const [answerBody, setAnswerBody] = useState('');
     const [answerImage, setAnswerImage] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -26,7 +28,7 @@ const QADetailPage = () => {
             ]);
             setQuestion(qRes.data);
             setAnswers(aRes.data || []);
-        } catch { toast.error("Failed to load"); }
+        } catch { toast.error("Không thể tải dữ liệu"); }
         finally { setIsLoading(false); }
     };
 
@@ -43,24 +45,29 @@ const QADetailPage = () => {
                     : [...a.likes, user?.user_id];
                 return { ...a, likes: newLikes };
             }).sort((a, b) => b.likes.length - a.likes.length));
-        } catch { toast.error("Failed to like"); }
+        } catch { toast.error("Thích thất bại"); }
     };
 
     const handleSubmitAnswer = async (e) => {
         e.preventDefault();
-        if (!answerBody.trim()) return toast.error("Please write an answer");
+        if (!answerBody.trim()) return toast.error("Vui lòng viết câu trả lời");
         setIsSubmitting(true);
         try {
             const fd = new FormData();
             fd.append('body', answerBody);
             if (answerImage) fd.append('image', answerImage);
             await qaApi.createAnswer(id, fd);
-            toast.success("Answer posted!");
+            toast.success("Đã đăng câu trả lời!");
             setAnswerBody('');
             setAnswerImage(null);
             loadAll();
-        } catch { toast.error("Failed to post answer"); }
+        } catch { toast.error("Đăng câu trả lời thất bại"); }
         finally { setIsSubmitting(false); }
+    };
+
+    const handleReportQuestion = async (reason) => {
+        await qaApi.reportQuestion(id, reason);
+        toast.success('Báo cáo đã được gửi tới quản trị viên!');
     };
 
     if (isLoading) return (
@@ -71,11 +78,17 @@ const QADetailPage = () => {
 
     return (
         <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 flex flex-col">
+            <ReportModal
+                isOpen={isReportOpen}
+                onClose={() => setIsReportOpen(false)}
+                onSubmit={handleReportQuestion}
+                title="Báo cáo câu hỏi vi phạm"
+            />
             <header className="px-6 py-4 border-b border-zinc-200 dark:border-zinc-800 bg-white/50 dark:bg-zinc-900/50 backdrop-blur sticky top-0 z-10 flex items-center gap-4">
                 <button onClick={() => navigate('/qa')} className="p-2 text-zinc-500 hover:text-emerald-500 hover:bg-emerald-500/10 rounded-xl transition-all">
                     <ArrowLeft size={20} />
                 </button>
-                <h1 className="text-lg font-bold text-zinc-800 dark:text-zinc-100">Question Detail</h1>
+                <h1 className="text-lg font-bold text-zinc-800 dark:text-zinc-100">Chi tiết câu hỏi</h1>
             </header>
 
             <main className="flex-1 max-w-7xl w-full mx-auto p-6 space-y-6">
@@ -87,8 +100,13 @@ const QADetailPage = () => {
                         <div className="absolute bottom-0 left-0 -ml-8 -mb-8 w-32 h-32 bg-black opacity-10 rounded-full blur-xl"></div>
                         
                         <div className="relative z-10">
-                            <div className="flex items-center gap-2 mb-4 text-emerald-50 font-bold text-xs uppercase tracking-widest opacity-90">
-                                <span>Question</span>
+                            <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center gap-2 text-emerald-50 font-bold text-xs uppercase tracking-widest opacity-90">
+                                    <span>Câu hỏi</span>
+                                </div>
+                                <button onClick={() => setIsReportOpen(true)} className="bg-red-500 hover:bg-red-600 text-white text-xs px-3 py-1 rounded-full font-bold shadow transition-colors">
+                                    Báo cáo
+                                </button>
                             </div>
                             <p className="text-white text-2xl sm:text-3xl font-bold whitespace-pre-wrap mb-6 leading-tight drop-shadow-sm">{question.body}</p>
                             {question.tags?.length > 0 && (
@@ -99,11 +117,17 @@ const QADetailPage = () => {
                                 </div>
                             )}
                             <div className="flex items-center gap-3 text-sm text-emerald-50 font-medium">
-                                <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center font-bold text-white shadow-inner uppercase">
+                                <div 
+                                    className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center font-bold text-white shadow-inner uppercase cursor-pointer hover:bg-white/30 transition-colors"
+                                    onClick={() => navigate(`/user/${question.user_id}`)}
+                                >
                                     {question.username?.charAt(0) || '?'}
                                 </div>
                                 <div className="flex flex-col">
-                                    <span>@{question.username}</span>
+                                    <span 
+                                        className="cursor-pointer hover:underline transition-all"
+                                        onClick={() => navigate(`/user/${question.user_id}`)}
+                                    >@{question.username}</span>
                                     <span className="text-xs opacity-70">{new Date(question.created_at).toLocaleDateString('vi-VN')}</span>
                                 </div>
                             </div>
@@ -114,7 +138,7 @@ const QADetailPage = () => {
                 {/* Answers */}
                 <div>
                     <h2 className="text-sm font-bold text-zinc-800 dark:text-zinc-200 mb-4 flex items-center gap-2">
-                        <span className="bg-zinc-200 dark:bg-zinc-800 px-2 py-0.5 rounded-md">{answers.length}</span> {answers.length === 1 ? 'Answer' : 'Answers'}
+                        <span className="bg-zinc-200 dark:bg-zinc-800 px-2 py-0.5 rounded-md">{answers.length}</span> {answers.length === 1 ? 'Câu trả lời' : 'Câu trả lời'}
                     </h2>
                     <div className="space-y-4">
                         {answers.map((a, idx) => {
@@ -124,7 +148,7 @@ const QADetailPage = () => {
                                     ${idx === 0 && answers.length > 0 ? 'border-emerald-500/40 ring-1 ring-emerald-500/20' : 'border-zinc-200 dark:border-zinc-800'}`}>
                                     {idx === 0 && answers.length > 1 && (
                                         <div className="text-xs font-semibold text-emerald-500 mb-2 flex items-center gap-1">
-                                            ⭐ Most liked answer
+                                            ⭐ Câu trả lời được thích nhất
                                         </div>
                                     )}
                                     <p className="text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap mb-4">{a.body}</p>
@@ -134,7 +158,14 @@ const QADetailPage = () => {
                                         </div>
                                     )}
                                     <div className="flex items-center justify-between">
-                                        <div className="text-xs text-zinc-500 dark:text-zinc-400">@{a.username} · {new Date(a.created_at).toLocaleDateString('vi-VN')}</div>
+                                        <div className="text-xs text-zinc-500 dark:text-zinc-400 flex items-center gap-1">
+                                            <span 
+                                                className="hover:text-emerald-500 cursor-pointer font-medium transition-colors"
+                                                onClick={() => navigate(`/user/${a.user_id}`)}
+                                            >@{a.username}</span> 
+                                            <span>·</span> 
+                                            <span>{new Date(a.created_at).toLocaleDateString('vi-VN')}</span>
+                                        </div>
                                         <button
                                             onClick={() => handleLike(a.id)}
                                             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
@@ -151,12 +182,12 @@ const QADetailPage = () => {
 
                 {/* Write answer */}
                 <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5">
-                    <h3 className="font-semibold text-zinc-800 dark:text-zinc-100 mb-4">Your Answer</h3>
+                    <h3 className="font-semibold text-zinc-800 dark:text-zinc-100 mb-4">Câu trả lời của bạn</h3>
                     <form onSubmit={handleSubmitAnswer} className="space-y-3">
                         <textarea
                             value={answerBody} onChange={e => setAnswerBody(e.target.value)} rows="4"
                             className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-2.5 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all resize-none"
-                            placeholder="Write a clear and helpful answer..."
+                            placeholder="Viết câu trả lời rõ ràng và hữu ích..."
                         />
 
                         {/* Image preview */}
@@ -171,12 +202,12 @@ const QADetailPage = () => {
 
                         <div className="flex items-center justify-between">
                             <label className="flex items-center gap-2 cursor-pointer px-3 py-2 rounded-xl text-sm text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
-                                <ImageIcon size={16} /> Attach image
+                                <ImageIcon size={16} /> Đính kèm ảnh
                                 <input type="file" accept="image/*" className="hidden" onChange={e => setAnswerImage(e.target.files[0])} />
                             </label>
                             <button type="submit" disabled={isSubmitting} className="flex items-center gap-2 px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-semibold text-sm transition-colors">
                                 {isSubmitting ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Send size={15} />}
-                                Post Answer
+                                Gửi câu trả lời
                             </button>
                         </div>
                     </form>

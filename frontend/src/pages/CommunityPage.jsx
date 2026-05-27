@@ -5,6 +5,7 @@ import { communityApi } from '../api/communityApi';
 import { useNavigate } from 'react-router-dom';
 import { Heart, AlertTriangle, Download, ArrowLeft, UploadCloud, FileIcon, User, MessageSquare } from 'lucide-react';
 import { toast } from 'react-toastify';
+import ReportModal from '../components/ReportModal';
 
 const CommunityPage = () => {
     const dispatch = useDispatch();
@@ -13,6 +14,7 @@ const CommunityPage = () => {
     const { user } = useSelector(state => state.auth);
 
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+    const [reportingPostId, setReportingPostId] = useState(null);
     const [uploadTitle, setUploadTitle] = useState("");
     const [uploadDesc, setUploadDesc] = useState("");
     const [uploadFile, setUploadFile] = useState(null);
@@ -27,17 +29,15 @@ const CommunityPage = () => {
             await communityApi.toggleLike(postId);
             dispatch(fetchPosts());
         } catch {
-            toast.error("Failed to like post");
+            toast.error("Thích thất bại");
         }
     };
 
-    const handleReport = async (postId) => {
-        try {
-            await communityApi.reportPost(postId);
-            toast.success("Post reported to moderators");
-        } catch {
-            toast.error("Failed to report");
-        }
+    const handleReport = async (reason) => {
+        if (!reportingPostId) return;
+        await communityApi.reportPost(reportingPostId, reason);
+        toast.success('Báo cáo đã được gửi tới quản trị viên!');
+        setReportingPostId(null);
     };
 
     const handleQueryFile = (postId, fileId) => {
@@ -52,7 +52,7 @@ const CommunityPage = () => {
 
     const handleSubmitPost = async (e) => {
         e.preventDefault();
-        if (!uploadFile) return toast.error("Please select a file to share");
+        if (!uploadFile) return toast.error("Vui lòng chọn file để chia sẻ");
         setIsSubmitting(true);
         try {
             const fd = new FormData();
@@ -67,14 +67,14 @@ const CommunityPage = () => {
                 storage_url: fileData.storageUrl
             });
 
-            toast.success("Post shared with community!");
+            toast.success("Đã chia sẻ lên cộng đồng!");
             setIsUploadModalOpen(false);
             setUploadTitle("");
             setUploadDesc("");
             setUploadFile(null);
             dispatch(fetchPosts());
         } catch (err) {
-            toast.error(err.message || "Upload failed");
+            toast.error(err.message || "Tải file thất bại");
         } finally {
             setIsSubmitting(false);
         }
@@ -82,6 +82,12 @@ const CommunityPage = () => {
 
     return (
         <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 font-sans text-zinc-900 dark:text-zinc-100 flex flex-col">
+            <ReportModal
+                isOpen={!!reportingPostId}
+                onClose={() => setReportingPostId(null)}
+                onSubmit={handleReport}
+                title="Báo cáo bài đăng vi phạm"
+            />
 
             {/* Header */}
             <header className="px-6 py-4 border-b border-zinc-200 dark:border-zinc-800 bg-white/50 dark:bg-zinc-900/50 backdrop-blur sticky top-0 z-10 flex items-center justify-between">
@@ -91,9 +97,9 @@ const CommunityPage = () => {
                     </button>
                     <div>
                         <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-teal-500">
-                            Community Hub
+                            Cộng đồng chia sẻ
                         </h1>
-                        <p className="text-sm text-zinc-500 dark:text-zinc-400">Discover and query shared documents</p>
+                        <p className="text-sm text-zinc-500 dark:text-zinc-400">Khám phá và hỏi AI về tài liệu cộng đồng</p>
                     </div>
                 </div>
                 <button
@@ -101,7 +107,7 @@ const CommunityPage = () => {
                     className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl transition-colors font-medium shadow-sm"
                 >
                     <UploadCloud size={18} />
-                    <span>Share Document</span>
+                    <span>Chia sẻ tài liệu</span>
                 </button>
             </header>
 
@@ -114,7 +120,7 @@ const CommunityPage = () => {
                 ) : posts.length === 0 ? (
                     <div className="text-center p-12 text-zinc-500 border border-zinc-200 dark:border-zinc-800 border-dashed rounded-2xl">
                         <UploadCloud size={48} className="mx-auto mb-4 opacity-20" />
-                        <p>No community documents shared yet. Be the first!</p>
+                        <p>Chưa có tài liệu nào được chia sẻ. Hãy là người đầu tiên!</p>
                     </div>
                 ) : (
                     <div className="flex flex-col gap-5 max-w-screen-xl mx-auto w-full">
@@ -123,11 +129,19 @@ const CommunityPage = () => {
                             return (
                                 <div key={post.id} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 hover:border-emerald-500/50 transition-all flex flex-col group">
                                     <div className="flex items-center gap-2 mb-3 text-xs font-medium text-zinc-500 dark:text-zinc-400">
-                                        <div className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-500 flex items-center justify-center">
+                                        <div 
+                                            className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-500 flex items-center justify-center cursor-pointer hover:bg-emerald-500/40 transition-colors"
+                                            onClick={(e) => { e.stopPropagation(); navigate(`/user/${post.userId}`); }}
+                                        >
                                             <User size={12} />
                                         </div>
-                                        <span>@{post.username}</span>
-                                        <span className="ml-auto opacity-60">{new Date(post.createdAt).toLocaleDateString()}</span>
+                                        <span 
+                                            className="hover:text-emerald-500 cursor-pointer transition-colors"
+                                            onClick={(e) => { e.stopPropagation(); navigate(`/user/${post.userId}`); }}
+                                        >
+                                            @{post.username}
+                                        </span>
+                                        <span className="ml-auto opacity-60">{new Date(post.createdAt || post.created_at).toLocaleDateString('vi-VN')}</span>
                                     </div>
 
                                     <h3 className="font-bold text-lg mb-2 text-zinc-800 dark:text-zinc-100">{post.title}</h3>
@@ -162,9 +176,9 @@ const CommunityPage = () => {
                                                 className="opacity-0 group-hover:opacity-100 px-3 py-1.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500 hover:text-white rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5"
                                                 title="Duplicate into your private chat"
                                             >
-                                                <MessageSquare size={14} /> Query
+                                                <MessageSquare size={14} /> Hỏi AI
                                             </button>
-                                            <button onClick={() => handleReport(post.id)} className="p-1.5 text-zinc-400 hover:text-orange-500 hover:bg-orange-500/10 rounded-lg transition-colors" title="Report">
+                                            <button onClick={() => setReportingPostId(post.id)} className="p-1.5 text-zinc-400 hover:text-orange-500 hover:bg-orange-500/10 rounded-lg transition-colors" title="Báo cáo">
                                                 <AlertTriangle size={16} />
                                             </button>
                                         </div>
