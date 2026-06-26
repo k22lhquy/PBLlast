@@ -89,7 +89,9 @@ const QAPage = () => {
                                 {q.tags?.length > 0 && (
                                     <div className="flex flex-wrap gap-1.5 mb-3">
                                         {q.tags.map(t => (
-                                            <span key={t} className="flex items-center gap-1 text-xs px-2 py-0.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full font-medium">
+                                            <span key={t} 
+                                                  onClick={(e) => { e.stopPropagation(); navigate(`/search-users?q=${t}&tab=qa`); }}
+                                                  className="flex items-center gap-1 text-xs px-2 py-0.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full font-medium hover:bg-emerald-500/20 transition-colors cursor-pointer">
                                                 <Tag size={10} />{t}
                                             </span>
                                         ))}
@@ -100,7 +102,7 @@ const QAPage = () => {
                                         className="hover:text-emerald-500 cursor-pointer font-medium transition-colors"
                                         onClick={(e) => { e.stopPropagation(); navigate(`/user/${q.user_id}`); }}
                                     >
-                                        @{q.username}
+                                        {q.username ? q.username.split('@')[0] : '...'}
                                     </span>
                                     <span>·</span>
                                     <span>{new Date(q.created_at).toLocaleDateString('vi-VN')}</span>

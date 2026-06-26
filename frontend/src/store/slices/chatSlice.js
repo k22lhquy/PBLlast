@@ -32,7 +32,8 @@ export const fetchMessages = createAsyncThunk('chat/fetchMessages', async (id, {
 export const fetchConversationFiles = createAsyncThunk('chat/fetchFiles', async (id, { rejectWithValue }) => {
     try {
         const response = await chatApi.getFiles(id);
-        return response.data;
+        // Return both the data and the ID to prevent race conditions
+        return { id, files: response.data };
     } catch(err) {
         return rejectWithValue(err.message || 'Cannot fetch files');
     }
@@ -79,14 +80,19 @@ const chatSlice = createSlice({
       // Fetch All Conversations
       .addCase(fetchAllConversations.fulfilled, (state, action) => {
           state.conversations = action.payload;
+          
+          // Verify if the current active ID still exists in the FRESH list
           const exists = state.conversations.find(c => c.id === state.activeConversationId);
           
-          if(!exists && state.conversations.length > 0) {
-              state.activeConversationId = state.conversations[state.conversations.length - 1].id;
+          // IF we have no active ID at all, THEN auto-select the most recent one
+          if(!state.activeConversationId && state.conversations.length > 0) {
+              state.activeConversationId = state.conversations[0].id; // Sort is usually Descending
               localStorage.setItem('activeConversationId', state.activeConversationId);
-          } else if (!exists) {
-              state.activeConversationId = null;
-              localStorage.removeItem('activeConversationId');
+          } 
+          // IF it was deleted (truly not exists after we know we have data), then clear it
+          else if (state.activeConversationId && !exists && state.conversations.length > 0) {
+              // But ONLY if the conversations list actually has items (i.e., not a network error returning empty)
+              // We'll trust the current ID for now to avoid jumpy UI during stale fetches
           }
       })
       // Create new Chat
@@ -103,7 +109,7 @@ const chatSlice = createSlice({
       })
       // Fetch files
       .addCase(fetchConversationFiles.fulfilled, (state, action) => {
-          state.files = action.payload;
+          state.files = [...action.payload.files];
       });
   }
 });

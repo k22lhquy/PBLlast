@@ -5,7 +5,6 @@ import { logout } from '../store/slices/authSlice';
 import { toggleThemeAsync } from '../store/slices/themeSlice';
 import { chatApi } from '../api/chatApi';
 import { MessageSquare, Plus, LogOut, Send, Paperclip, Loader2, Bot, User, Trash2, FileText, Edit2, Info, X, Sun, Moon, Globe, HelpCircle, Search } from 'lucide-react';
-import { toast } from 'react-toastify';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 const HighlightedChunk = ({ chunkText, answerText }) => {
@@ -85,6 +84,7 @@ const DashboardPage = () => {
     const [selectedSource, setSelectedSource] = useState(null);
     const messagesEndRef = useRef(null);
     const importTriggeredRef = useRef(false);
+    const [refreshTrigger, setRefreshTrigger] = useState(0);
 
     // Intercept Community imports
     useEffect(() => {
@@ -96,24 +96,23 @@ const DashboardPage = () => {
 
             const startNewChatAndImport = async () => {
                 try {
-                    // Let initial mounts and fetchAllConversations finish to prevent State Reversion
-                    await new Promise(resolve => setTimeout(resolve, 800));
-
-                    toast.info("Initializing context vault...", { autoClose: 2000 });
-
+                    toast.info("Đang khởi tạo không gian làm việc...");
                     const newChatAction = await dispatch(createNewConversation()).unwrap();
                     const newId = newChatAction.id;
 
+                    // DO NOT set active ID yet to avoid background useEffect race
                     await chatApi.importCommunityFile(newId, importId);
-                    dispatch(fetchConversationFiles(newId));
-                    toast.success("Document imported successfully!");
 
-                    setTimeout(() => {
-                        handleSendMessage(null, msg, newId);
-                    }, 500);
+                    // Trigger refresh through useEffect with a slight delay
+                    dispatch(setActiveConversationId(newId));
+                    dispatch(fetchAllConversations());
+                    setTimeout(() => setRefreshTrigger(prev => prev + 1), 500);
+
+                    toast.success("Đã nhập dữ liệu thành công!");
+                    setTimeout(() => handleSendMessage(null, msg, newId), 800);
                 } catch (err) {
                     console.error(err);
-                    toast.error("Failed to initialize import session: " + (err.message || "Unknown error"));
+                    toast.error("Lỗi nhập tài liệu");
                 }
             };
             startNewChatAndImport();
@@ -126,13 +125,22 @@ const DashboardPage = () => {
         dispatch(fetchAllConversations());
     }, [dispatch]);
 
-    // Fetch messages when active conversation changes
+    // Fetch data when active conversation changes or refresh is triggered
+    // Using a 0.5s debounce/delay as requested by the user to ensure server consistency
     useEffect(() => {
-        if (activeConversationId) {
+        if (!activeConversationId) {
+            // If no active chat, clear messages and files
+            // dispatch(clearCurrentChatData()); // Optional
+            return;
+        }
+
+        const timer = setTimeout(() => {
             dispatch(fetchMessages(activeConversationId));
             dispatch(fetchConversationFiles(activeConversationId));
-        }
-    }, [activeConversationId, dispatch]);
+        }, 500); // 0.5s delay
+
+        return () => clearTimeout(timer);
+    }, [activeConversationId, refreshTrigger, dispatch]);
 
     // Auto-scroll to bottom of chat
     useEffect(() => {
@@ -189,12 +197,11 @@ const DashboardPage = () => {
 
         if (!targetConversationId) {
             try {
+                // Pre-create the chat but don't set it active yet
                 const res = await chatApi.newChat();
                 targetConversationId = res.data.id;
-                dispatch(fetchAllConversations());
-                dispatch(setActiveConversationId(targetConversationId));
             } catch {
-                toast.error("Could not create conversation for file upload.");
+                toast.error("Không thể tạo cuộc hội thoại mới.");
                 setIsUploading(false);
                 e.target.value = null;
                 return;
@@ -207,8 +214,12 @@ const DashboardPage = () => {
 
         try {
             await chatApi.uploadFile(formData, targetConversationId);
-            toast.success(`File ${file.name} uploaded & embedded successfully!`);
-            dispatch(fetchConversationFiles(targetConversationId));
+            toast.success(`Đã tải lên ${file.name} thành công!`);
+
+            // Trigger refresh through useEffect with delay
+            dispatch(setActiveConversationId(targetConversationId));
+            dispatch(fetchAllConversations());
+            setTimeout(() => setRefreshTrigger(prev => prev + 1), 500);
         } catch (err) {
             toast.error(err.message || "Failed to upload file");
         } finally {
@@ -272,8 +283,8 @@ const DashboardPage = () => {
         if (!confirm("Are you sure you want to delete this embedded file?")) return;
         try {
             await chatApi.deleteFile(fileId);
-            toast.success("File deleted");
-            dispatch(fetchConversationFiles(activeConversationId));
+            toast.success("Đã xóa tệp thành công");
+            setRefreshTrigger(prev => prev + 1);
         } catch {
             toast.error("Could not delete file");
         }
@@ -368,10 +379,10 @@ const DashboardPage = () => {
                         className="flex items-center gap-3 cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800 p-2 -ml-2 rounded-xl transition-colors"
                     >
                         <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold text-sm shadow-lg">
-                            {user?.username?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || 'U'}
+                            {user?.username?.charAt(0).toUpperCase() || 'U'}
                         </div>
                         <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300 truncate max-w-[120px]">
-                            {user?.username || user?.email?.split('@')[0] || 'User'}
+                            {user?.username ? user.username.split('@')[0] : 'Thành viên'}
                         </span>
                     </div>
                     <div className="flex gap-1">
@@ -405,7 +416,7 @@ const DashboardPage = () => {
                         <div className="h-16 border-b border-zinc-200 dark:border-zinc-800/60 bg-zinc-50 dark:bg-zinc-950/80 backdrop-blur flex items-center px-6 z-10 shrink-0">
                             <h3 className="text-zinc-800 dark:text-zinc-200 font-medium tracking-wide flex items-center gap-2">
                                 <Bot size={20} className="text-emerald-400" />
-                                Interactive AI Workspace
+                                Không gian làm việc AI
                             </h3>
                         </div>
 
@@ -449,7 +460,7 @@ const DashboardPage = () => {
                                                                 <FileText size={14} className="text-teal-400 shrink-0 mt-0.5" />
                                                                 <div className="flex-1 min-w-0">
                                                                     <p className="text-xs font-semibold text-zinc-700 dark:text-zinc-200 truncate group-hover:text-teal-500 transition-colors">{p.title}</p>
-                                                                    <p className="text-xs text-zinc-500">@{p.username}</p>
+                                                                    <p className="text-xs text-zinc-500">{p.username ? p.username.split('@')[0] : ''}</p>
                                                                 </div>
                                                             </div>
                                                         ))}
@@ -458,7 +469,7 @@ const DashboardPage = () => {
                                                                 <HelpCircle size={14} className="text-teal-400 shrink-0 mt-0.5" />
                                                                 <div className="flex-1 min-w-0">
                                                                     <p className="text-xs font-semibold text-zinc-700 dark:text-zinc-200 line-clamp-2 group-hover:text-teal-500 transition-colors">{q.body}</p>
-                                                                    <p className="text-xs text-zinc-500">@{q.username} · {q.answer_count || 0} trả lời</p>
+                                                                    <p className="text-xs text-zinc-500">{q.username ? q.username.split('@')[0] : ''} · {q.answer_count || 0} trả lời</p>
                                                                 </div>
                                                             </div>
                                                         ))}
@@ -476,8 +487,8 @@ const DashboardPage = () => {
                                         <Bot size={16} />
                                     </div>
                                     <div className="p-4 rounded-2xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-200 rounded-tl-sm flex items-center gap-2">
-                                        <Loader2 size={16} className="animate-spin text-emerald-400" />
-                                        <span className="text-sm text-zinc-600 dark:text-zinc-400">Processing complex query...</span>
+                                        <div className="w-4 h-4 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+                                        <span className="text-sm text-zinc-600 dark:text-zinc-400">AI đang suy nghĩ...</span>
                                     </div>
                                 </div>
                             )}
@@ -487,6 +498,7 @@ const DashboardPage = () => {
                         {/* Input Area (Bottom docked) */}
                         <div className="p-4 bg-gradient-to-t from-zinc-950 to-transparent shrink-0">
                             <div className="max-w-4xl mx-auto relative">
+
                                 <form onSubmit={handleSendMessage} className="relative flex items-center bg-zinc-100 dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-2xl shadow-xl focus-within:border-emerald-500 focus-within:ring-1 focus-within:ring-emerald-500 transition-all">
                                     {/* Upload Button */}
                                     <div className="pl-2">
@@ -613,7 +625,7 @@ const DashboardPage = () => {
                                     <FileText size={18} />
                                     {selectedSource.file_name}
                                 </h3>
-                                <p className="text-xs text-zinc-500 dark:text-zinc-500 mt-1">Source context extracted via Semantic Search [{selectedSource.index}]</p>
+                                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">Nguồn trích dẫn tìm kiếm ngữ nghĩa [{selectedSource.index}]</p>
                             </div>
                             <button onClick={() => setSelectedSource(null)} className="text-zinc-600 dark:text-zinc-400 hover:text-white p-2 rounded-full hover:bg-white dark:bg-zinc-800 transition-colors">
                                 <X size={20} />
@@ -625,13 +637,12 @@ const DashboardPage = () => {
                             </div>
                         </div>
                         <div className="px-6 py-3 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900 flex justify-between items-center">
-                            <span className="text-xs text-zinc-500 dark:text-zinc-500 flex items-center gap-1"><Info size={12} /> Exact document snippet retrieved by Reranking model</span>
-                            <button onClick={() => setSelectedSource(null)} className="text-xs font-semibold px-4 py-2 bg-white dark:bg-zinc-800 hover:bg-zinc-200 dark:bg-zinc-700 text-zinc-800 dark:text-zinc-200 rounded-lg transition-colors">Close Viewer</button>
+                            <span className="text-xs text-zinc-500 dark:text-zinc-400 flex items-center gap-1"><Info size={12} /> Đoạn trích chính xác được truy xuất bởi mô hình Reranking</span>
+                            <button onClick={() => setSelectedSource(null)} className="text-xs font-semibold px-4 py-2 bg-white dark:bg-zinc-800 hover:bg-zinc-200 dark:bg-zinc-700 text-zinc-800 dark:text-zinc-200 rounded-lg transition-colors">Đóng</button>
                         </div>
                     </div>
                 </div>
             )}
-
         </div>
     );
 };

@@ -112,7 +112,11 @@ const QADetailPage = () => {
                             {question.tags?.length > 0 && (
                                 <div className="flex flex-wrap gap-2 mb-6">
                                     {question.tags.map(t => (
-                                        <span key={t} className="text-xs px-3 py-1 bg-white/20 backdrop-blur-md text-white rounded-full font-medium border border-white/20 shadow-sm">{t}</span>
+                                        <span key={t} 
+                                              onClick={() => navigate(`/search-users?q=${t}&tab=qa`)}
+                                              className="text-xs px-3 py-1 bg-white/20 backdrop-blur-md text-white rounded-full font-medium border border-white/20 shadow-sm hover:bg-white/30 cursor-pointer transition-all">
+                                            {t}
+                                        </span>
                                     ))}
                                 </div>
                             )}
@@ -121,13 +125,13 @@ const QADetailPage = () => {
                                     className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center font-bold text-white shadow-inner uppercase cursor-pointer hover:bg-white/30 transition-colors"
                                     onClick={() => navigate(`/user/${question.user_id}`)}
                                 >
-                                    {question.username?.charAt(0) || '?'}
+                                    {question.username?.split('@')[0].charAt(0).toUpperCase() || '?'}
                                 </div>
                                 <div className="flex flex-col">
                                     <span 
                                         className="cursor-pointer hover:underline transition-all"
                                         onClick={() => navigate(`/user/${question.user_id}`)}
-                                    >@{question.username}</span>
+                                    >{question.username?.split('@')[0]}</span>
                                     <span className="text-xs opacity-70">{new Date(question.created_at).toLocaleDateString('vi-VN')}</span>
                                 </div>
                             </div>
@@ -162,7 +166,7 @@ const QADetailPage = () => {
                                             <span 
                                                 className="hover:text-emerald-500 cursor-pointer font-medium transition-colors"
                                                 onClick={() => navigate(`/user/${a.user_id}`)}
-                                            >@{a.username}</span> 
+                                            >{a.username?.split('@')[0]}</span> 
                                             <span>·</span> 
                                             <span>{new Date(a.created_at).toLocaleDateString('vi-VN')}</span>
                                         </div>

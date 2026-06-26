@@ -79,7 +79,7 @@ const CommunityPage = () => {
             setUploadDesc("");
             setUploadTags("");
             setUploadFile(null);
-            dispatch(fetchPosts());
+            await dispatch(fetchPosts()).unwrap();
         } catch (err) {
             toast.error(err.message || "Tải file thất bại");
         } finally {
@@ -146,7 +146,7 @@ const CommunityPage = () => {
                                             className="hover:text-emerald-500 cursor-pointer transition-colors"
                                             onClick={(e) => { e.stopPropagation(); navigate(`/user/${post.userId}`); }}
                                         >
-                                            @{post.username}
+                                            {post.username ? post.username.split('@')[0] : '...'}
                                         </span>
                                         <span className="ml-auto opacity-60">{new Date(post.createdAt || post.created_at).toLocaleDateString('vi-VN')}</span>
                                     </div>
@@ -155,7 +155,9 @@ const CommunityPage = () => {
                                     {post.tags && post.tags.length > 0 && (
                                         <div className="flex flex-wrap gap-2 mb-3">
                                             {post.tags.map((tag, idx) => (
-                                                <span key={idx} className="px-2 py-0.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 text-xs rounded-md">
+                                                <span key={idx} 
+                                                      onClick={(e) => { e.stopPropagation(); navigate(`/search-users?q=${tag}&tab=posts`); }}
+                                                      className="px-2 py-0.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 text-xs rounded-md hover:bg-emerald-500/20 hover:text-emerald-500 transition-colors cursor-pointer">
                                                     #{tag}
                                                 </span>
                                             ))}
@@ -171,7 +173,7 @@ const CommunityPage = () => {
                                             <span className="text-xs font-semibold truncate">{post.fileName}</span>
                                         </div>
                                         {post.storageUrl && (
-                                            <a href={post.storageUrl} target="_blank" rel="noreferrer" title="Download Document" className="p-1.5 bg-zinc-200/50 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 rounded-lg transition-colors">
+                                            <a href={post.storageUrl} download={post.fileName} target="_blank" rel="noreferrer" title="Tải xuống tài liệu" className="p-1.5 bg-zinc-200/50 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 rounded-lg transition-colors">
                                                 <Download size={14} />
                                             </a>
                                         )}
@@ -210,24 +212,24 @@ const CommunityPage = () => {
             {isUploadModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
                     <form onSubmit={handleSubmitPost} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl w-full max-w-md p-6 shadow-2xl animate-in fade-in zoom-in-95">
-                        <h2 className="text-2xl font-bold mb-6">Share with Community</h2>
+                        <h2 className="text-2xl font-bold mb-6">Chia sẻ với cộng đồng</h2>
 
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium mb-1.5 opacity-80">Title</label>
+                                <label className="block text-sm font-medium mb-1.5 opacity-80">Tiêu đề</label>
                                 <input
                                     type="text" required value={uploadTitle} onChange={e => setUploadTitle(e.target.value)}
                                     className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-2.5 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all"
-                                    placeholder="Brief summary..."
+                                    placeholder="Tóm tắt ngắn gọn..."
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium mb-1.5 opacity-80">Description</label>
+                                <label className="block text-sm font-medium mb-1.5 opacity-80">Mô tả</label>
                                 <textarea
                                     required value={uploadDesc} onChange={e => setUploadDesc(e.target.value)} rows="3"
                                     className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-2.5 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all resize-none"
-                                    placeholder="Explain why this document is useful..."
+                                    placeholder="Giải thích tại sao tài liệu này hữu ích..."
                                 />
                             </div>
 
@@ -241,7 +243,7 @@ const CommunityPage = () => {
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium mb-1.5 opacity-80">Document</label>
+                                <label className="block text-sm font-medium mb-1.5 opacity-80">Tài liệu</label>
                                 <div className="border-2 border-dashed border-zinc-300 dark:border-zinc-700 rounded-xl p-4 text-center hover:border-emerald-500 transition-colors bg-zinc-50 dark:bg-zinc-950 relative">
                                     <input
                                         type="file" required onChange={e => setUploadFile(e.target.files[0])}
@@ -254,7 +256,7 @@ const CommunityPage = () => {
                                     ) : (
                                         <div className="text-zinc-500">
                                             <UploadCloud size={24} className="mx-auto mb-2 opacity-50" />
-                                            <span className="text-sm">Click to browse or drag file</span>
+                                            <span className="text-sm">Click để duyệt hoặc kéo thả file</span>
                                         </div>
                                     )}
                                 </div>
@@ -263,10 +265,10 @@ const CommunityPage = () => {
 
                         <div className="flex items-center gap-3 mt-8">
                             <button type="button" onClick={() => setIsUploadModalOpen(false)} disabled={isSubmitting} className="flex-1 py-3 px-4 font-semibold text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-xl transition-colors">
-                                Cancel
+                                Hủy
                             </button>
                             <button type="submit" disabled={isSubmitting} className="flex-1 py-3 px-4 font-semibold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl transition-colors flex justify-center items-center gap-2">
-                                {isSubmitting ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Posting...</> : 'Publish'}
+                                {isSubmitting ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Đang đăng...</> : 'Công khai'}
                             </button>
                         </div>
                     </form>

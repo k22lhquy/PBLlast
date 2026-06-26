@@ -75,10 +75,10 @@ const PublicProfilePage = () => {
                     <>
                         <div className="flex flex-col items-center py-6">
                             <div className="w-24 h-24 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold text-4xl shadow-xl border-4 border-white dark:border-zinc-900 mb-4">
-                                {targetUser?.username?.charAt(0).toUpperCase() || targetUser?.email?.charAt(0).toUpperCase() || 'U'}
+                                {targetUser?.username?.split('@')[0].charAt(0).toUpperCase() || 'U'}
                             </div>
-                            <h2 className="text-2xl font-bold">{targetUser?.username || targetUser?.email?.split('@')[0] || 'User'}</h2>
-                            <p className="text-zinc-500 mb-4">@{targetUser?.username}</p>
+                            <h2 className="text-2xl font-bold">{targetUser?.username ? targetUser.username.split('@')[0] : 'Thành viên'}</h2>
+                            <p className="text-zinc-500 mb-4">Thành viên hệ thống</p>
                             
                             <button
                                 onClick={handleLikeUser}

@@ -16,9 +16,10 @@ export const chatApi = {
   getFiles: (conversationId) => axiosClient.get(`/chat-box/files/${conversationId}`),
   renameConversation: (conversationId, title) => axiosClient.put(`/chat-box/rename/${conversationId}`, { title }),
   getMessages: (conversationId) => axiosClient.get(`/messages/all_messages/${conversationId}`),
-  sendMessage: (conversationId, message) => axiosClient.post('/messages/send_message', {
+  sendMessage: (conversationId, message, activeFileId = null) => axiosClient.post('/messages/send_message', {
       conversationId: conversationId,
-      message: message
+      message: message,
+      activeFileId: activeFileId
   }),
   importCommunityFile: (conversationId, fileId) => axiosClient.post(`/chat-box/import-file/${conversationId}`, { file_id: fileId })
 };

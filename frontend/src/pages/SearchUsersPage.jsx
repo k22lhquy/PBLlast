@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Search, User, Heart, FileText, ShieldQuestion } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { userApi } from '../api/userApi';
 import { toast } from 'react-toastify';
 
@@ -12,8 +12,9 @@ const TABS = [
 
 const SearchUsersPage = () => {
     const navigate = useNavigate();
-    const [query, setQuery] = useState('');
-    const [activeTab, setActiveTab] = useState('users');
+    const [searchParams, setSearchParams] = useSearchParams();
+    const [query, setQuery] = useState(searchParams.get('q') || '');
+    const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'users');
     const [users, setUsers] = useState([]);
     const [posts, setPosts] = useState([]);
     const [questions, setQuestions] = useState([]);
@@ -26,23 +27,45 @@ const SearchUsersPage = () => {
         }
         setIsLoading(true);
         try {
-            const [uRes, pRes, qRes] = await Promise.all([
-                userApi.searchUsers(query),
-                userApi.searchPosts(query),
-                userApi.searchQuestions(query),
-            ]);
+            // Call one by one to see which one fails
+            const uRes = await userApi.searchUsers(query);
             setUsers(uRes.data || []);
+            
+            const pRes = await userApi.searchPosts(query);
             setPosts(pRes.data || []);
+            
+            const qRes = await userApi.searchQuestions(query);
             setQuestions(qRes.data || []);
-        } catch {
-            toast.error("Lỗi khi tìm kiếm");
+        } catch (err) {
+            console.error("Search Fail Details:", err);
+            const msg = err.message || (typeof err === 'string' ? err : JSON.stringify(err));
+            toast.error("Lỗi khi tìm kiếm: " + msg);
         } finally {
             setIsLoading(false);
         }
     };
 
     useEffect(() => {
-        const timer = setTimeout(handleSearch, 300);
+        const q = searchParams.get('q') || '';
+        const tab = searchParams.get('tab');
+        if (q !== query) {
+            setQuery(q);
+        }
+        if (tab && ['users', 'posts', 'qa'].includes(tab)) {
+            setActiveTab(tab);
+        }
+    }, [searchParams]);
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (query.trim()) {
+                setSearchParams({ q: query }, { replace: true });
+            } else {
+                searchParams.delete('q');
+                setSearchParams(searchParams, { replace: true });
+            }
+            handleSearch();
+        }, 300);
         return () => clearTimeout(timer);
     }, [query]);
 
@@ -55,8 +78,8 @@ const SearchUsersPage = () => {
                     <button onClick={() => navigate(-1)} className="p-2 text-zinc-500 hover:text-emerald-500 hover:bg-emerald-500/10 rounded-xl transition-all shrink-0">
                         <ArrowLeft size={20} />
                     </button>
-                    <div>
-                        <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-teal-500">Tìm kiếm</h1>
+                    <div className="flex-1">
+                        <h1 className="text-xl font-bold bg-gradient-to-r from-emerald-500 to-teal-500 bg-clip-text text-transparent">Tìm kiếm</h1>
                         <p className="text-sm text-zinc-500 dark:text-zinc-400">Tìm thành viên, bài chia sẻ và câu hỏi</p>
                     </div>
                 </div>
@@ -115,18 +138,18 @@ const SearchUsersPage = () => {
                                 <div key={u.id} onClick={() => navigate(`/user/${u.id}`)}
                                     className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4 rounded-2xl flex items-center gap-4 hover:border-emerald-500/50 hover:shadow-md transition-all cursor-pointer group">
                                     <div className="w-12 h-12 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-xl uppercase group-hover:scale-110 transition-transform shrink-0">
-                                        {u.username.charAt(0)}
+                                        {u.username.split('@')[0].charAt(0).toUpperCase()}
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <h3 className="font-bold truncate group-hover:text-emerald-500 transition-colors flex items-center gap-2">
-                                            {u.username}
+                                            {u.username.split('@')[0]}
                                             {u.likes?.length > 0 && (
                                                 <span className="text-xs flex items-center gap-1 text-red-500 bg-red-50 dark:bg-red-500/10 px-2 py-0.5 rounded-full font-semibold shrink-0">
                                                     <Heart size={10} className="fill-current" /> {u.likes.length}
                                                 </span>
                                             )}
                                         </h3>
-                                        <p className="text-sm text-zinc-500 truncate">{u.email}</p>
+                                        <p className="text-sm text-zinc-500 truncate">Thành viên hệ thống</p>
                                     </div>
                                 </div>
                             ))}
@@ -150,7 +173,7 @@ const SearchUsersPage = () => {
                                         <span
                                             className="hover:text-emerald-500 cursor-pointer font-medium transition-colors"
                                             onClick={(e) => { e.stopPropagation(); navigate(`/user/${p.userId}`); }}
-                                        >@{p.username}</span>
+                                        >{p.username ? p.username.split('@')[0] : '...'}</span>
                                         <span>·</span>
                                         <span className="text-emerald-500">{p.fileName}</span>
                                         <span>·</span>
@@ -159,7 +182,9 @@ const SearchUsersPage = () => {
                                     {p.tags && p.tags.length > 0 && (
                                         <div className="flex items-center gap-2 mt-2 flex-wrap">
                                             {p.tags.map(t => (
-                                                <span key={t} className="bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full text-xs text-zinc-500">#{t}</span>
+                                                <span key={t} 
+                                                      onClick={(e) => { e.stopPropagation(); navigate(`/search-users?q=${t}`); }}
+                                                      className="bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full text-xs text-zinc-500 hover:bg-emerald-500/20 hover:text-emerald-500 transition-colors cursor-pointer">#{t}</span>
                                             ))}
                                         </div>
                                     )}
@@ -184,11 +209,13 @@ const SearchUsersPage = () => {
                                         <span
                                             className="hover:text-emerald-500 cursor-pointer font-medium transition-colors"
                                             onClick={(e) => { e.stopPropagation(); navigate(`/user/${q.user_id}`); }}
-                                        >@{q.username}</span>
+                                        >{q.username ? q.username.split('@')[0] : '...'}</span>
                                         <span>·</span>
                                         <span>{q.answer_count || 0} câu trả lời</span>
                                         {q.tags?.map(t => (
-                                            <span key={t} className="bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full text-zinc-500">{t}</span>
+                                            <span key={t} 
+                                                  onClick={(e) => { e.stopPropagation(); navigate(`/search-users?q=${t}`); }}
+                                                  className="bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full text-zinc-500 text-xs hover:bg-emerald-500/20 hover:text-emerald-500 transition-colors cursor-pointer">#{t}</span>
                                         ))}
                                     </div>
                                 </div>

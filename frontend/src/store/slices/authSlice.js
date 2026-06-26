@@ -21,9 +21,15 @@ export const fetchMe = createAsyncThunk('auth/fetchMe', async (_, { rejectWithVa
   }
 });
 
+const getInitialToken = () => {
+  const token = localStorage.getItem('access_token');
+  if (token === 'undefined' || token === 'null' || !token) return null;
+  return token;
+};
+
 const initialState = {
   user: null,
-  token: localStorage.getItem('access_token') || null,
+  token: getInitialToken(),
   isAuthenticated: false,
   isLoading: false,
   error: null,
@@ -72,6 +78,7 @@ const authSlice = createSlice({
       .addCase(fetchMe.rejected, (state, action) => {
         state.isLoading = false;
         state.user = null;
+        state.token = null;
         state.isAuthenticated = false;
         state.error = action.payload;
       });
