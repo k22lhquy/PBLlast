@@ -84,6 +84,7 @@ const DashboardPage = () => {
     const [selectedSource, setSelectedSource] = useState(null);
     const messagesEndRef = useRef(null);
     const processedImportTimestampRef = useRef(null);
+    const handleSendMessageRef = useRef(null);
 
     // Intercept Community imports
     useEffect(() => {
@@ -105,21 +106,30 @@ const DashboardPage = () => {
                     const newChatAction = await dispatch(createNewConversation()).unwrap();
                     const newId = newChatAction.id;
 
-                    // 2. Setup active box
+                    // 2. Setup active box first so UI switches immediately
                     dispatch(setActiveConversationId(newId));
 
                     // 3. Import the file from community
                     await chatApi.importCommunityFile(newId, importId);
                     
-                    // 4. Initial fetch for messages/files
-                    dispatch(fetchMessages(newId));
-                    dispatch(fetchConversationFiles(newId));
+                    // 4. Fetch files/messages for the new conversation
+                    await Promise.all([
+                        dispatch(fetchMessages(newId)).unwrap(),
+                        dispatch(fetchConversationFiles(newId)).unwrap(),
+                    ]);
                     dispatch(fetchAllConversations());
 
                     toast.success("Đã nhập dữ liệu thành công!");
                     
-                    // 5. Send message
-                    handleSendMessage(null, msg, newId);
+                    // 5. Call via ref to get the LATEST handleSendMessage (avoids stale closure)
+                    //    Also re-fetch files here to override any stale empty results from the
+                    //    useEffect that fired before import completed (race condition fix)
+                    setTimeout(() => {
+                        dispatch(fetchConversationFiles(newId));
+                        if (handleSendMessageRef.current) {
+                            handleSendMessageRef.current(null, msg, newId);
+                        }
+                    }, 300);
                 } catch (err) {
                     console.error(err);
                     toast.error("Lỗi nhập tài liệu");
@@ -277,6 +287,9 @@ const DashboardPage = () => {
             dispatch(setSendingMessage(false));
         }
     }
+
+    // Always keep the ref pointing to the latest version (to avoid stale closures in useEffect)
+    handleSendMessageRef.current = handleSendMessage;
 
     const handleDeleteFile = async (fileId) => {
         if (!confirm("Are you sure you want to delete this embedded file?")) return;
