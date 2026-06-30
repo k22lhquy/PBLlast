@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { fetchPosts } from '../store/slices/communitySlice';
 import { communityApi } from '../api/communityApi';
 import { useNavigate } from 'react-router-dom';
-import { Heart, AlertTriangle, Download, ArrowLeft, UploadCloud, FileIcon, User, MessageSquare } from 'lucide-react';
+import { Heart, AlertTriangle, Download, ArrowLeft, UploadCloud, FileIcon, User, MessageSquare, Eye, Loader2, X } from 'lucide-react';
 import { toast } from 'react-toastify';
 import ReportModal from '../components/ReportModal';
 
@@ -20,6 +20,12 @@ const CommunityPage = () => {
     const [uploadTags, setUploadTags] = useState("");
     const [uploadFile, setUploadFile] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // States for Document Content Preview Modal
+    const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
+    const [previewFileName, setPreviewFileName] = useState("");
+    const [previewFileContent, setPreviewFileContent] = useState("");
+    const [isLoadingPreview, setIsLoadingPreview] = useState(false);
 
     useEffect(() => {
         dispatch(fetchPosts());
@@ -50,6 +56,26 @@ const CommunityPage = () => {
                 importTimestamp: Date.now()
             }
         });
+    };
+
+    const handlePreviewFile = async (e, url, fileName) => {
+        e.preventDefault();
+        setIsLoadingPreview(true);
+        setPreviewFileName(fileName);
+        try {
+            const res = await communityApi.previewFile(url);
+            const apiRes = res;
+            if (!apiRes.success) {
+                throw new Error(apiRes.message || "Lỗi không xác định ở máy chủ.");
+            }
+            setPreviewFileContent(apiRes.data || "(Nội dung tệp rỗng)");
+            setIsPreviewModalOpen(true);
+        } catch (err) {
+            console.error(err);
+            toast.error("Không thể đọc tệp: " + (err.response?.data?.message || err.message));
+        } finally {
+            setIsLoadingPreview(false);
+        }
     };
 
     const handleSubmitPost = async (e) => {
@@ -168,15 +194,19 @@ const CommunityPage = () => {
                                         {post.description}
                                     </p>
 
-                                    <div className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 flex items-center justify-between mb-4">
+                                    <div 
+                                        onClick={(e) => post.storageUrl && handlePreviewFile(e, post.storageUrl, post.fileName)}
+                                        title="Click để xem nội dung tài liệu" 
+                                        className={`bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 flex items-center justify-between mb-4 transition-all ${post.storageUrl ? 'cursor-pointer hover:bg-emerald-500/10 dark:hover:bg-emerald-500/5 hover:border-emerald-500/30' : ''}`}
+                                    >
                                         <div className="flex items-center gap-2 overflow-hidden text-emerald-600 dark:text-emerald-400">
                                             <FileIcon size={16} className="shrink-0" />
                                             <span className="text-xs font-semibold truncate">{post.fileName}</span>
                                         </div>
                                         {post.storageUrl && (
-                                            <a href={post.storageUrl} download={post.fileName} target="_blank" rel="noreferrer" title="Tải xuống tài liệu" className="p-1.5 bg-zinc-200/50 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 rounded-lg transition-colors">
-                                                <Download size={14} />
-                                            </a>
+                                            <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 shrink-0 bg-emerald-500/10 px-2.5 py-1.5 rounded-lg hover:bg-emerald-500 hover:text-white transition-all">
+                                                <Eye size={12} /> Xem tài liệu
+                                            </span>
                                         )}
                                     </div>
 
@@ -273,6 +303,44 @@ const CommunityPage = () => {
                             </button>
                         </div>
                     </form>
+                </div>
+            )}
+
+            {/* Preview Modal */}
+            {isPreviewModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setIsPreviewModalOpen(false)}>
+                    <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl w-full max-w-4xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95" onClick={e => e.stopPropagation()}>
+                        <div className="px-6 py-4 border-b border-zinc-200 dark:border-zinc-800 flex justify-between items-center bg-zinc-50 dark:bg-zinc-900/90 pr-5">
+                            <div>
+                                <h3 className="text-lg font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
+                                    <FileIcon size={20} className="text-emerald-500" />
+                                    {previewFileName}
+                                </h3>
+                                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">Đang xem trước nội dung tài liệu</p>
+                            </div>
+                            <button onClick={() => setIsPreviewModalOpen(false)} className="text-zinc-500 hover:text-zinc-700 dark:hover:text-white p-2 rounded-xl transition-colors">
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <div className="p-6 overflow-y-auto bg-zinc-50 dark:bg-zinc-950/50 custom-scrollbar text-sm leading-relaxed whitespace-pre-wrap max-h-[55vh] font-mono text-zinc-800 dark:text-zinc-200 border-b border-zinc-200 dark:border-zinc-800">
+                            {previewFileContent}
+                        </div>
+                        <div className="px-6 py-4 bg-white dark:bg-zinc-900 flex justify-end">
+                            <button onClick={() => setIsPreviewModalOpen(false)} className="py-2.5 px-6 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold transition-colors shadow-sm">
+                                Đóng
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Preview Loading Spinner */}
+            {isLoadingPreview && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+                    <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl flex items-center gap-3 border border-zinc-200 dark:border-zinc-800 shadow-xl">
+                        <Loader2 className="w-6 h-6 animate-spin text-emerald-500" />
+                        <span className="text-sm font-semibold">Đang đọc dữ liệu tài liệu...</span>
+                    </div>
                 </div>
             )}
         </div>

@@ -11,5 +11,6 @@ export const communityApi = {
     toggleLike: (postId) => axiosClient.post(`/community/${postId}/like`),
     reportPost: (postId, reason) => axiosClient.post(`/community/${postId}/report`, { reason }),
     getMyPosts: () => axiosClient.get('/community/me/posts'),
-    deletePost: (postId) => axiosClient.delete(`/community/posts/${postId}`)
+    deletePost: (postId) => axiosClient.delete(`/community/posts/${postId}`),
+    previewFile: (url) => axiosClient.get('/community/posts/preview', { params: { url } })
 };
