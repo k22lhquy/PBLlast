@@ -46,7 +46,8 @@ const CommunityPage = () => {
         navigate('/', {
             state: {
                 importFileId: fileId,
-                autoChatMsg: "cho tôi biết nội dung chính của file này"
+                autoChatMsg: "cho tôi biết nội dung chính của file này",
+                importTimestamp: Date.now()
             }
         });
     };

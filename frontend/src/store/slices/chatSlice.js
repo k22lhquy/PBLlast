@@ -39,6 +39,24 @@ export const fetchConversationFiles = createAsyncThunk('chat/fetchFiles', async 
     }
 });
 
+export const deleteConversation = createAsyncThunk('chat/delete', async (id, { rejectWithValue, dispatch, getState }) => {
+    try {
+        await chatApi.deleteConversation(id);
+        const state = getState().chat;
+        
+        // If the deleted conversation is the active one, find a new one to select
+        if (String(state.activeConversationId) == String(id)) {
+            const remaining = state.conversations.filter(c => String(c.id) !== String(id));
+            const nextId = remaining.length > 0 ? remaining[0].id : null;
+            dispatch(setActiveConversationId(nextId));
+        }
+        
+        return id;
+    } catch(err) {
+        return rejectWithValue(err.message || 'Cannot delete conversation');
+    }
+});
+
 const initialState = {
   conversations: [],
   activeConversationId: localStorage.getItem('activeConversationId') || null,
@@ -79,25 +97,30 @@ const chatSlice = createSlice({
       builder
       // Fetch All Conversations
       .addCase(fetchAllConversations.fulfilled, (state, action) => {
-          state.conversations = action.payload;
+          const freshConversations = action.payload;
           
-          // Verify if the current active ID still exists in the FRESH list
-          const exists = state.conversations.find(c => c.id === state.activeConversationId);
+          // CRITICAL: If our current activeConversationId is NOT in the fresh list, 
+          // it might be a brand new one that the server hasn't listed yet.
+          // We MUST NOT lose it!
+          const activeExists = freshConversations.find(c => String(c.id) === String(state.activeConversationId));
+          const currentActiveObj = state.conversations.find(c => String(c.id) === String(state.activeConversationId));
           
-          // IF we have no active ID at all, THEN auto-select the most recent one
+          if (state.activeConversationId && !activeExists && currentActiveObj) {
+              // Keep the current active one at the top of the new list
+              state.conversations = [currentActiveObj, ...freshConversations];
+          } else {
+              state.conversations = freshConversations;
+          }
+          
+          // Auto-select first if none active
           if(!state.activeConversationId && state.conversations.length > 0) {
-              state.activeConversationId = state.conversations[0].id; // Sort is usually Descending
+              state.activeConversationId = state.conversations[0].id; 
               localStorage.setItem('activeConversationId', state.activeConversationId);
-          } 
-          // IF it was deleted (truly not exists after we know we have data), then clear it
-          else if (state.activeConversationId && !exists && state.conversations.length > 0) {
-              // But ONLY if the conversations list actually has items (i.e., not a network error returning empty)
-              // We'll trust the current ID for now to avoid jumpy UI during stale fetches
           }
       })
       // Create new Chat
       .addCase(createNewConversation.fulfilled, (state, action) => {
-          state.conversations.push(action.payload);
+          state.conversations.unshift(action.payload);
           state.activeConversationId = action.payload.id;
           localStorage.setItem('activeConversationId', action.payload.id);
           state.messages = [];
@@ -109,7 +132,14 @@ const chatSlice = createSlice({
       })
       // Fetch files
       .addCase(fetchConversationFiles.fulfilled, (state, action) => {
-          state.files = [...action.payload.files];
+          // Use loose comparison or string cast to avoid ID type mismatches
+          if (String(action.payload.id) == String(state.activeConversationId)) {
+              state.files = [...action.payload.files];
+          }
+      })
+      // Delete Conversation
+      .addCase(deleteConversation.fulfilled, (state, action) => {
+          state.conversations = state.conversations.filter(c => String(c.id) !== String(action.payload));
       });
   }
 });

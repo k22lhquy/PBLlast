@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { adminApi } from '../api/adminApi';
-import { ShieldAlert, Trash2, Edit2, Users, FileText, Settings, ArrowLeft, X, Eye, AlertTriangle } from 'lucide-react';
+import { ShieldAlert, Trash2, Edit2, Users, FileText, Settings, ArrowLeft, X, Eye, AlertTriangle, Ban, Unlock } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
@@ -47,14 +47,14 @@ const AdminPage = () => {
         }
     }, [user]);
 
-    const handleDeleteUser = async (userId) => {
-        if (!window.confirm("Bạn có chắc? Thao tác này sẽ xóa tài khoản và TOÀN BỘ nội dung của họ!")) return;
+    const handleToggleBlockUser = async (userId, isBlocked) => {
+        const actionText = isBlocked ? "bỏ chặn" : "chặn";
+        if (!window.confirm(`Bạn có chắc muốn ${actionText} người dùng này?`)) return;
         try {
-            await adminApi.deleteUser(userId);
-            setUsers(users.filter(u => u.id !== userId));
-            toast.success("Đã xóa tài khoản thành công");
+            await adminApi.toggleBlockUser(userId, !isBlocked);
+            toast.success(`Đã ${actionText} tài khoản thành công`);
             loadData();
-        } catch (e) { toast.error("Xóa tài khoản thất bại"); }
+        } catch (e) { toast.error("Thao tác thất bại"); }
     };
 
     const handleViewUser = async (userObj) => {
@@ -129,7 +129,13 @@ const AdminPage = () => {
                                     <td className="p-4 font-medium">{u.name}</td>
                                     <td className="p-4 text-zinc-500">{u.email}</td>
                                     <td className="p-4">
-                                        {u.isAdmin ? <span className="bg-red-500/10 text-red-500 px-2 flex items-center gap-1 py-1 rounded inline-flex text-xs font-bold leading-none"><ShieldAlert size={12}/> Admin</span> : <span className="text-zinc-500">Người dùng</span>}
+                                        {u.isAdmin ? (
+                                            <span className="bg-red-500/10 text-red-500 px-2 flex items-center gap-1 py-1 rounded inline-flex text-xs font-bold leading-none"><ShieldAlert size={12}/> Admin</span>
+                                        ) : u.isBlocked ? (
+                                            <span className="bg-amber-500/10 text-amber-500 px-2 flex items-center gap-1 py-1 rounded inline-flex text-xs font-bold leading-none"><Ban size={12}/> Đã chặn</span>
+                                        ) : (
+                                            <span className="text-zinc-500">Người dùng</span>
+                                        )}
                                     </td>
                                     <td className="p-4">
                                         <span className="text-blue-500 mr-2">{u.postsCount} Bài</span>
@@ -141,7 +147,17 @@ const AdminPage = () => {
                                     <td className="p-4 flex gap-2">
                                         <button onClick={() => handleViewUser(u)} className="p-2 bg-zinc-100 hover:bg-emerald-500 hover:text-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 rounded transition" title="Xem hồ sơ"><Eye size={16} /></button>
                                         {!u.isAdmin && (
-                                            <button onClick={() => handleDeleteUser(u.id)} className="p-2 bg-zinc-100 hover:bg-red-500 hover:text-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 rounded transition"><Trash2 size={16} /></button>
+                                            <button 
+                                                onClick={() => handleToggleBlockUser(u.id, u.isBlocked)} 
+                                                className={`p-2 rounded transition ${
+                                                    u.isBlocked 
+                                                        ? 'bg-amber-500/20 hover:bg-amber-500 hover:text-white text-amber-600 dark:text-amber-400' 
+                                                        : 'bg-zinc-100 hover:bg-red-500 hover:text-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'
+                                                }`}
+                                                title={u.isBlocked ? "Bỏ chặn đăng bài/Q&A" : "Chặn đăng bài/Q&A"}
+                                            >
+                                                {u.isBlocked ? <Unlock size={16} /> : <Ban size={16} />}
+                                            </button>
                                         )}
                                     </td>
                                 </tr>

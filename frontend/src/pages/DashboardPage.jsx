@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchAllConversations, createNewConversation, fetchMessages, setActiveConversationId, addMessageLocally, setSendingMessage, fetchConversationFiles, updateConversationTitleLocally } from '../store/slices/chatSlice';
+import { fetchAllConversations, createNewConversation, fetchMessages, setActiveConversationId, addMessageLocally, setSendingMessage, fetchConversationFiles, updateConversationTitleLocally, deleteConversation } from '../store/slices/chatSlice';
 import { logout } from '../store/slices/authSlice';
 import { toggleThemeAsync } from '../store/slices/themeSlice';
 import { chatApi } from '../api/chatApi';
@@ -83,33 +83,43 @@ const DashboardPage = () => {
     const [editingTitle, setEditingTitle] = useState("");
     const [selectedSource, setSelectedSource] = useState(null);
     const messagesEndRef = useRef(null);
-    const importTriggeredRef = useRef(false);
-    const [refreshTrigger, setRefreshTrigger] = useState(0);
+    const processedImportTimestampRef = useRef(null);
 
     // Intercept Community imports
     useEffect(() => {
-        if (location.state?.autoChatMsg && location.state?.importFileId && !importTriggeredRef.current) {
-            importTriggeredRef.current = true;
+        const importTimestamp = location.state?.importTimestamp;
+        
+        if (location.state?.autoChatMsg && location.state?.importFileId && importTimestamp && processedImportTimestampRef.current !== importTimestamp) {
+            // SYNC LOCK using timestamp
+            processedImportTimestampRef.current = importTimestamp;
+            
             const msg = location.state.autoChatMsg;
             const importId = location.state.importFileId;
-            navigate('.', { replace: true, state: {} }); // Clear state
+            
+            // Clear state from URL immediately
+            navigate('.', { replace: true, state: {} });
 
             const startNewChatAndImport = async () => {
                 try {
-                    toast.info("Đang khởi tạo không gian làm việc...");
+                    // 1. Create a new chat
                     const newChatAction = await dispatch(createNewConversation()).unwrap();
                     const newId = newChatAction.id;
 
-                    // DO NOT set active ID yet to avoid background useEffect race
-                    await chatApi.importCommunityFile(newId, importId);
-
-                    // Trigger refresh through useEffect with a slight delay
+                    // 2. Setup active box
                     dispatch(setActiveConversationId(newId));
+
+                    // 3. Import the file from community
+                    await chatApi.importCommunityFile(newId, importId);
+                    
+                    // 4. Initial fetch for messages/files
+                    dispatch(fetchMessages(newId));
+                    dispatch(fetchConversationFiles(newId));
                     dispatch(fetchAllConversations());
-                    setTimeout(() => setRefreshTrigger(prev => prev + 1), 500);
 
                     toast.success("Đã nhập dữ liệu thành công!");
-                    setTimeout(() => handleSendMessage(null, msg, newId), 800);
+                    
+                    // 5. Send message
+                    handleSendMessage(null, msg, newId);
                 } catch (err) {
                     console.error(err);
                     toast.error("Lỗi nhập tài liệu");
@@ -117,7 +127,6 @@ const DashboardPage = () => {
             };
             startNewChatAndImport();
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [location.state, navigate, dispatch]);
 
     // Initial load
@@ -125,22 +134,13 @@ const DashboardPage = () => {
         dispatch(fetchAllConversations());
     }, [dispatch]);
 
-    // Fetch data when active conversation changes or refresh is triggered
-    // Using a 0.5s debounce/delay as requested by the user to ensure server consistency
+    // Fetch data when active conversation changes
     useEffect(() => {
-        if (!activeConversationId) {
-            // If no active chat, clear messages and files
-            // dispatch(clearCurrentChatData()); // Optional
-            return;
-        }
+        if (!activeConversationId) return;
 
-        const timer = setTimeout(() => {
-            dispatch(fetchMessages(activeConversationId));
-            dispatch(fetchConversationFiles(activeConversationId));
-        }, 500); // 0.5s delay
-
-        return () => clearTimeout(timer);
-    }, [activeConversationId, refreshTrigger, dispatch]);
+        dispatch(fetchMessages(activeConversationId));
+        dispatch(fetchConversationFiles(activeConversationId));
+    }, [activeConversationId, dispatch]);
 
     // Auto-scroll to bottom of chat
     useEffect(() => {
@@ -158,11 +158,10 @@ const DashboardPage = () => {
     const handleDeleteConversation = async (id, e) => {
         e.stopPropagation();
         try {
-            await chatApi.deleteConversation(id);
-            toast.success("Conversation deleted");
-            dispatch(fetchAllConversations());
-        } catch {
-            toast.error("Could not delete conversation");
+            await dispatch(deleteConversation(id)).unwrap();
+            toast.success("Đã xóa cuộc hội thoại");
+        } catch (err) {
+            toast.error(err || "Không thể xóa cuộc hội thoại");
         }
     }
 
@@ -216,10 +215,10 @@ const DashboardPage = () => {
             await chatApi.uploadFile(formData, targetConversationId);
             toast.success(`Đã tải lên ${file.name} thành công!`);
 
-            // Trigger refresh through useEffect with delay
+            // Trigger refresh immediately
             dispatch(setActiveConversationId(targetConversationId));
             dispatch(fetchAllConversations());
-            setTimeout(() => setRefreshTrigger(prev => prev + 1), 500);
+            dispatch(fetchConversationFiles(targetConversationId));
         } catch (err) {
             toast.error(err.message || "Failed to upload file");
         } finally {
@@ -284,7 +283,7 @@ const DashboardPage = () => {
         try {
             await chatApi.deleteFile(fileId);
             toast.success("Đã xóa tệp thành công");
-            setRefreshTrigger(prev => prev + 1);
+            dispatch(fetchConversationFiles(activeConversationId));
         } catch {
             toast.error("Could not delete file");
         }
