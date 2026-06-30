@@ -12,5 +12,6 @@ export const communityApi = {
     reportPost: (postId, reason) => axiosClient.post(`/community/${postId}/report`, { reason }),
     getMyPosts: () => axiosClient.get('/community/me/posts'),
     deletePost: (postId) => axiosClient.delete(`/community/posts/${postId}`),
-    previewFile: (url) => axiosClient.get('/community/posts/preview', { params: { url } })
+    previewFile: (url) => axiosClient.post('/community/posts/preview', { url }),
+    previewFileByChunks: (file_id) => axiosClient.post('/community/posts/preview-chunks', { file_id })
 };

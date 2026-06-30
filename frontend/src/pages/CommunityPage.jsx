@@ -43,8 +43,8 @@ const CommunityPage = () => {
                     
                     // Auto open preview modal
                     const targetPostObj = posts.find(p => p.id === targetPostId);
-                    if (targetPostObj && targetPostObj.storageUrl) {
-                        handlePreviewFile(new Event('click'), targetPostObj.storageUrl, targetPostObj.fileName);
+                    if (targetPostObj && targetPostObj.fileId) {
+                        handlePreviewFile(null, targetPostObj.fileId, targetPostObj.fileName);
                     }
 
                     setTimeout(() => {
@@ -87,12 +87,12 @@ const CommunityPage = () => {
         });
     };
 
-    const handlePreviewFile = async (e, url, fileName) => {
-        e.preventDefault();
+    const handlePreviewFile = async (e, fileId, fileName) => {
+        if (e) e.preventDefault();
         setIsLoadingPreview(true);
         setPreviewFileName(fileName);
         try {
-            const res = await communityApi.previewFile(url);
+            const res = await communityApi.previewFileByChunks(fileId);
             const apiRes = res;
             if (!apiRes.success) {
                 throw new Error(apiRes.message || "Lỗi không xác định ở máy chủ.");
@@ -224,15 +224,15 @@ const CommunityPage = () => {
                                     </p>
 
                                     <div 
-                                        onClick={(e) => post.storageUrl && handlePreviewFile(e, post.storageUrl, post.fileName)}
+                                        onClick={(e) => post.fileId && handlePreviewFile(e, post.fileId, post.fileName)}
                                         title="Click để xem nội dung tài liệu" 
-                                        className={`bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 flex items-center justify-between mb-4 transition-all ${post.storageUrl ? 'cursor-pointer hover:bg-emerald-500/10 dark:hover:bg-emerald-500/5 hover:border-emerald-500/30' : ''}`}
+                                        className={`bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 flex items-center justify-between mb-4 transition-all ${post.fileId ? 'cursor-pointer hover:bg-emerald-500/10 dark:hover:bg-emerald-500/5 hover:border-emerald-500/30' : ''}`}
                                     >
                                         <div className="flex items-center gap-2 overflow-hidden text-emerald-600 dark:text-emerald-400">
                                             <FileIcon size={16} className="shrink-0" />
                                             <span className="text-xs font-semibold truncate">{post.fileName}</span>
                                         </div>
-                                        {post.storageUrl && (
+                                        {post.fileId && (
                                             <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 shrink-0 bg-emerald-500/10 px-2.5 py-1.5 rounded-lg hover:bg-emerald-500 hover:text-white transition-all">
                                                 <Eye size={12} /> Xem tài liệu
                                             </span>
