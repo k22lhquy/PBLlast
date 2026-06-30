@@ -91,7 +91,18 @@ const chatSlice = createSlice({
         const { id, title } = action.payload;
         const conv = state.conversations.find(c => c.id === id);
         if (conv) conv.title = title;
-    }
+    },
+    removeFileLocally: (state, action) => {
+        // Remove file by id from local state without API refetch
+        state.files = state.files.filter(f => f.id !== action.payload);
+    },
+    addFileLocally: (state, action) => {
+        // Add a file object to local state without API refetch
+        const exists = state.files.some(f => f.id === action.payload.id);
+        if (!exists) {
+            state.files.unshift(action.payload);
+        }
+    },
   },
   extraReducers: (builder) => {
       builder
@@ -144,5 +155,5 @@ const chatSlice = createSlice({
   }
 });
 
-export const { setActiveConversationId, addMessageLocally, setSendingMessage, updateConversationTitleLocally } = chatSlice.actions;
+export const { setActiveConversationId, addMessageLocally, setSendingMessage, updateConversationTitleLocally, removeFileLocally, addFileLocally } = chatSlice.actions;
 export default chatSlice.reducer;

@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchAllConversations, createNewConversation, fetchMessages, setActiveConversationId, addMessageLocally, setSendingMessage, fetchConversationFiles, updateConversationTitleLocally, deleteConversation } from '../store/slices/chatSlice';
+import { fetchAllConversations, createNewConversation, fetchMessages, setActiveConversationId, addMessageLocally, setSendingMessage, fetchConversationFiles, updateConversationTitleLocally, deleteConversation, removeFileLocally, addFileLocally } from '../store/slices/chatSlice';
 import { logout } from '../store/slices/authSlice';
 import { toggleThemeAsync } from '../store/slices/themeSlice';
 import { chatApi } from '../api/chatApi';
@@ -85,6 +85,7 @@ const DashboardPage = () => {
     const messagesEndRef = useRef(null);
     const processedImportTimestampRef = useRef(null);
     const handleSendMessageRef = useRef(null);
+    const isImportingRef = useRef(false); // Blocks useEffect from fetching stale files during import
 
     // Intercept Community imports
     useEffect(() => {
@@ -102,6 +103,9 @@ const DashboardPage = () => {
 
             const startNewChatAndImport = async () => {
                 try {
+                    // Block the activeConversationId useEffect from fetching stale empty files
+                    isImportingRef.current = true;
+
                     // 1. Create a new chat
                     const newChatAction = await dispatch(createNewConversation()).unwrap();
                     const newId = newChatAction.id;
@@ -112,26 +116,32 @@ const DashboardPage = () => {
                     // 3. Import the file from community
                     await chatApi.importCommunityFile(newId, importId);
                     
-                    // 4. Fetch files/messages for the new conversation
-                    await Promise.all([
-                        dispatch(fetchMessages(newId)).unwrap(),
-                        dispatch(fetchConversationFiles(newId)).unwrap(),
-                    ]);
-                    dispatch(fetchAllConversations());
+                    // 4. Fetch messages via thunk and files directly via API (bypass thunk ID guard)
+                    await dispatch(fetchMessages(newId)).unwrap();
 
+                    // Directly fetch and inject files into Redux state — avoids fetchConversationFiles
+                    // ID-guard race condition entirely
+                    try {
+                        const filesRes = await chatApi.getFiles(newId);
+                        const importedFiles = filesRes.data || [];
+                        importedFiles.forEach(f => dispatch(addFileLocally(f)));
+                    } catch (fe) {
+                        console.warn("Could not load files after import:", fe);
+                    }
+
+                    dispatch(fetchAllConversations());
                     toast.success("Đã nhập dữ liệu thành công!");
                     
-                    // 5. Call via ref to get the LATEST handleSendMessage (avoids stale closure)
-                    //    Also re-fetch files here to override any stale empty results from the
-                    //    useEffect that fired before import completed (race condition fix)
+                    // 5. Send message after React finishes rendering
                     setTimeout(() => {
-                        dispatch(fetchConversationFiles(newId));
+                        isImportingRef.current = false;
                         if (handleSendMessageRef.current) {
                             handleSendMessageRef.current(null, msg, newId);
                         }
                     }, 300);
                 } catch (err) {
                     console.error(err);
+                    isImportingRef.current = false;
                     toast.error("Lỗi nhập tài liệu");
                 }
             };
@@ -147,6 +157,7 @@ const DashboardPage = () => {
     // Fetch data when active conversation changes
     useEffect(() => {
         if (!activeConversationId) return;
+        if (isImportingRef.current) return; // Skip during community import to avoid race condition
 
         dispatch(fetchMessages(activeConversationId));
         dispatch(fetchConversationFiles(activeConversationId));
@@ -295,8 +306,9 @@ const DashboardPage = () => {
         if (!confirm("Are you sure you want to delete this embedded file?")) return;
         try {
             await chatApi.deleteFile(fileId);
+            // Optimistic local update - remove immediately without waiting for API refetch
+            dispatch(removeFileLocally(fileId));
             toast.success("Đã xóa tệp thành công");
-            dispatch(fetchConversationFiles(activeConversationId));
         } catch {
             toast.error("Could not delete file");
         }
