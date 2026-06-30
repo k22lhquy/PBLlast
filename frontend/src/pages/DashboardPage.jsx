@@ -455,7 +455,7 @@ const DashboardPage = () => {
                                                     </p>
                                                     <div className="space-y-2">
                                                         {msg.community_references.posts?.map((p) => (
-                                                            <div key={p.id} onClick={() => navigate('/community')} className="flex items-start gap-2 p-2 bg-teal-500/5 hover:bg-teal-500/10 border border-teal-500/20 rounded-xl cursor-pointer transition-all group">
+                                                            <div key={p.id} onClick={() => navigate('/community', { state: { scrollToPostId: p.id } })} className="flex items-start gap-2 p-2 bg-teal-500/5 hover:bg-teal-500/10 border border-teal-500/20 rounded-xl cursor-pointer transition-all group">
                                                                 <FileText size={14} className="text-teal-400 shrink-0 mt-0.5" />
                                                                 <div className="flex-1 min-w-0">
                                                                     <p className="text-xs font-semibold text-zinc-700 dark:text-zinc-200 truncate group-hover:text-teal-500 transition-colors">{p.title}</p>

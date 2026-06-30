@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchPosts } from '../store/slices/communitySlice';
 import { communityApi } from '../api/communityApi';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Heart, AlertTriangle, Download, ArrowLeft, UploadCloud, FileIcon, User, MessageSquare, Eye, Loader2, X } from 'lucide-react';
 import { toast } from 'react-toastify';
 import ReportModal from '../components/ReportModal';
@@ -10,6 +10,7 @@ import ReportModal from '../components/ReportModal';
 const CommunityPage = () => {
     const dispatch = useDispatch();
     const navigate = useNavigate();
+    const location = useLocation();
     const { posts, isLoading } = useSelector(state => state.community);
     const { user } = useSelector(state => state.auth);
 
@@ -30,6 +31,34 @@ const CommunityPage = () => {
     useEffect(() => {
         dispatch(fetchPosts());
     }, [dispatch]);
+
+    useEffect(() => {
+        if (location.state?.scrollToPostId && !isLoading && posts.length > 0) {
+            const targetPostId = location.state.scrollToPostId;
+            const timer = setTimeout(() => {
+                const element = document.getElementById(`post-${targetPostId}`);
+                if (element) {
+                    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    element.classList.add('ring-4', 'ring-emerald-500', 'ring-offset-2', 'dark:ring-offset-zinc-950');
+                    
+                    // Auto open preview modal
+                    const targetPostObj = posts.find(p => p.id === targetPostId);
+                    if (targetPostObj && targetPostObj.storageUrl) {
+                        handlePreviewFile(new Event('click'), targetPostObj.storageUrl, targetPostObj.fileName);
+                    }
+
+                    setTimeout(() => {
+                        element.classList.remove('ring-4', 'ring-emerald-500', 'ring-offset-2', 'dark:ring-offset-zinc-950');
+                    }, 3000);
+                }
+                
+                // Clear state after execution inside the timeout callback
+                navigate(location.pathname, { replace: true, state: {} });
+            }, 300);
+            
+            return () => clearTimeout(timer);
+        }
+    }, [location.state, isLoading, posts, navigate]);
 
     const handleLike = async (postId) => {
         try {
@@ -161,7 +190,7 @@ const CommunityPage = () => {
                         {posts.map(post => {
                             const isLiked = post.likes.includes(user?.user_id);
                             return (
-                                <div key={post.id} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 hover:border-emerald-500/50 transition-all flex flex-col group">
+                                <div id={`post-${post.id}`} key={post.id} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 hover:border-emerald-500/50 transition-all flex flex-col group duration-300">
                                     <div className="flex items-center gap-2 mb-3 text-xs font-medium text-zinc-500 dark:text-zinc-400">
                                         <div 
                                             className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-500 flex items-center justify-center cursor-pointer hover:bg-emerald-500/40 transition-colors"
